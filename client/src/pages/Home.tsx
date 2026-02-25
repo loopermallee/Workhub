@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Loader2, AlertCircle } from "lucide-react";
 import { MobileLayout } from "@/components/layout/MobileLayout";
-import { NewsBanner } from "@/components/NewsBanner";
+import { ImportantNewsCard } from "@/components/ImportantNewsCard";
 import { SearchBar } from "@/components/SearchBar";
 import { CategoryCard } from "@/components/CategoryCard";
 import { ItemCard } from "@/components/ItemCard";
@@ -57,7 +57,7 @@ export default function Home() {
   return (
     <MobileLayout>
       <div className="pb-8">
-        {!isSearching && <NewsBanner news={news} />}
+        {!isSearching && <ImportantNewsCard />}
         
         <div className={isSearching ? "" : "mt-2"}>
           <SearchBar value={searchQuery} onChange={setSearchQuery} />

@@ -4,12 +4,16 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Home from "./pages/Home";
+import NewsPage from "./pages/NewsPage";
+import AdminNewsPage from "./pages/AdminNewsPage";
 import NotFound from "./pages/not-found";
 
 function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
+      <Route path="/news" component={NewsPage} />
+      <Route path="/admin/news" component={AdminNewsPage} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -19,7 +23,6 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        {/* The toaster will render toast notifications requested by UI */}
         <Toaster />
         <Router />
       </TooltipProvider>

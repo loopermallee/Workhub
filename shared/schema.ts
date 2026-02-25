@@ -8,6 +8,18 @@ export const newsSchema = z.object({
   link: z.string().optional()
 });
 
+export const newsItemSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  body: z.string(),
+  createdAt: z.string(),
+  expiresAt: z.string()
+});
+
+export const insertNewsItemSchema = newsItemSchema.omit({ id: true, createdAt: true });
+export type InsertNewsItem = z.infer<typeof insertNewsItemSchema>;
+export type NewsItem = z.infer<typeof newsItemSchema>;
+
 export const categorySchema = z.object({
   id: z.string(),
   title: z.string()
