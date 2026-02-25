@@ -27,7 +27,7 @@ function fileTypeIcon(fileType: string) {
   }
 }
 
-function fileTypeColor(fileType: string): string {
+function fileTypeIconColor(fileType: string): string {
   switch (fileType) {
     case "pdf": return "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400";
     case "docx": return "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400";
@@ -49,7 +49,46 @@ function fileTypeLabel(fileType: string): string {
   }
 }
 
-function LibraryItemCard({ item, onTap }: { item: LibraryItem; onTap: (item: LibraryItem) => void }) {
+function PatientTypeBadge({ patientType }: { patientType: "adult" | "paed" | null | undefined }) {
+  if (patientType === "adult") {
+    return (
+      <span
+        data-testid="badge-patient-adult"
+        className="text-[10px] font-bold px-2 py-0.5 rounded-md flex-shrink-0 bg-blue-600 text-white dark:bg-blue-500"
+      >
+        Adult
+      </span>
+    );
+  }
+  if (patientType === "paed") {
+    return (
+      <span
+        data-testid="badge-patient-paed"
+        className="text-[10px] font-bold px-2 py-0.5 rounded-md flex-shrink-0 bg-orange-500 text-white dark:bg-orange-400"
+      >
+        Paed
+      </span>
+    );
+  }
+  return (
+    <span
+      data-testid="badge-patient-protocol"
+      className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md flex-shrink-0 bg-secondary text-muted-foreground"
+    >
+      Protocol
+    </span>
+  );
+}
+
+function LibraryItemCard({
+  item,
+  onTap,
+  isProtocols,
+}: {
+  item: LibraryItem;
+  onTap: (item: LibraryItem) => void;
+  isProtocols: boolean;
+}) {
   const read = isLibraryRead(item.id);
 
   return (
@@ -58,7 +97,7 @@ function LibraryItemCard({ item, onTap }: { item: LibraryItem; onTap: (item: Lib
       onClick={() => onTap(item)}
       className="w-full flex items-start gap-3 p-3.5 bg-card border border-border rounded-xl shadow-sm hover:shadow-md active:scale-[0.99] transition-all text-left"
     >
-      <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${fileTypeColor(item.fileType)}`}>
+      <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${fileTypeIconColor(item.fileType)}`}>
         {fileTypeIcon(item.fileType)}
       </div>
       <div className="flex-1 min-w-0">
@@ -69,9 +108,13 @@ function LibraryItemCard({ item, onTap }: { item: LibraryItem; onTap: (item: Lib
             )}
             {item.title}
           </p>
-          <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md flex-shrink-0 ${fileTypeColor(item.fileType)}`}>
-            {fileTypeLabel(item.fileType)}
-          </span>
+          {isProtocols ? (
+            <PatientTypeBadge patientType={item.patientType} />
+          ) : (
+            <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md flex-shrink-0 ${fileTypeIconColor(item.fileType)}`}>
+              {fileTypeLabel(item.fileType)}
+            </span>
+          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1">
@@ -110,12 +153,14 @@ export default function LibraryBucketPage() {
   const { bucket } = useParams<{ bucket: string }>();
   const [, setLocation] = useLocation();
   const [search, setSearch] = useState("");
+  const [, forceUpdate] = useState(0);
 
   const { data: allItems = [], isLoading } = useQuery<LibraryItem[]>({
     queryKey: ["/api/library"],
     staleTime: 30000,
   });
 
+  const isProtocols = bucket === "Protocols";
   const bucketItems = allItems.filter((i) => i.bucket === bucket);
 
   const filtered = search.trim()
@@ -132,6 +177,7 @@ export default function LibraryBucketPage() {
 
   const handleTap = (item: LibraryItem) => {
     markLibraryRead(item.id);
+    forceUpdate((n) => n + 1);
     queryClient.invalidateQueries({ queryKey: ["/api/library"] });
 
     if (item.fileType === "pdf" && item.source === "upload") {
@@ -197,7 +243,7 @@ export default function LibraryBucketPage() {
         ) : (
           <div className="space-y-2.5">
             {filtered.map((item) => (
-              <LibraryItemCard key={item.id} item={item} onTap={handleTap} />
+              <LibraryItemCard key={item.id} item={item} onTap={handleTap} isProtocols={isProtocols} />
             ))}
           </div>
         )}

@@ -61,6 +61,7 @@ export const libraryItemSchema = z.object({
   updatedAt: z.string(),
   tags: z.array(z.string()),
   summary: z.string().optional(),
+  patientType: z.enum(["adult", "paed"]).nullable().optional(),
 });
 
 export const insertLibraryItemSchema = libraryItemSchema.omit({ id: true, createdAt: true, updatedAt: true });

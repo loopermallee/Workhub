@@ -26,6 +26,8 @@ interface UploadResult {
   filename: string;
 }
 
+type PatientType = "adult" | "paed" | "";
+
 interface ItemFormState {
   title: string;
   bucket: Bucket;
@@ -35,6 +37,7 @@ interface ItemFormState {
   tags: string;
   summary: string;
   url: string;
+  patientType: PatientType;
 }
 
 const defaultForm = (): ItemFormState => ({
@@ -46,6 +49,7 @@ const defaultForm = (): ItemFormState => ({
   tags: "",
   summary: "",
   url: "",
+  patientType: "",
 });
 
 function PinGate({ onAuth }: { onAuth: () => void }) {
@@ -212,6 +216,7 @@ export default function AdminLibraryPage() {
           lastUpdated: form.lastUpdated,
           tags: parseTags(form.tags),
           summary: form.summary || undefined,
+          patientType: form.bucket === "Protocols" && form.patientType ? form.patientType : null,
         });
       }
 
@@ -240,6 +245,7 @@ export default function AdminLibraryPage() {
       lastUpdated: form.lastUpdated,
       tags: parseTags(form.tags),
       summary: form.summary || undefined,
+      patientType: form.bucket === "Protocols" && form.patientType ? form.patientType : null,
     });
     setForm(defaultForm());
     setShowAddForm(false);
@@ -256,6 +262,7 @@ export default function AdminLibraryPage() {
       tags: item.tags.join(", "),
       summary: item.summary ?? "",
       url: item.url,
+      patientType: (item.patientType as PatientType) ?? "",
     });
   };
 
@@ -272,6 +279,7 @@ export default function AdminLibraryPage() {
         tags: parseTags(editForm.tags),
         summary: editForm.summary || undefined,
         url: editForm.url,
+        patientType: editForm.bucket === "Protocols" && editForm.patientType ? editForm.patientType : null,
       },
     });
   };
@@ -372,12 +380,39 @@ export default function AdminLibraryPage() {
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Bucket</label>
               <select
                 value={form.bucket}
-                onChange={(e) => setForm((f) => ({ ...f, bucket: e.target.value as Bucket }))}
+                onChange={(e) => setForm((f) => ({ ...f, bucket: e.target.value as Bucket, patientType: "" }))}
                 className="w-full px-3 py-2 text-sm bg-secondary border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 text-primary"
               >
                 {BUCKETS.map((b) => <option key={b} value={b}>{b}</option>)}
               </select>
             </div>
+
+            {form.bucket === "Protocols" && (
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Patient Type</label>
+                <div className="flex gap-2">
+                  {(["", "adult", "paed"] as const).map((pt) => (
+                    <button
+                      key={pt}
+                      type="button"
+                      data-testid={`button-patient-type-add-${pt || "none"}`}
+                      onClick={() => setForm((f) => ({ ...f, patientType: pt }))}
+                      className={`flex-1 py-2 text-xs font-semibold rounded-lg border transition-colors ${
+                        form.patientType === pt
+                          ? pt === "adult"
+                            ? "bg-blue-600 text-white border-blue-600"
+                            : pt === "paed"
+                            ? "bg-orange-500 text-white border-orange-500"
+                            : "bg-primary text-primary-foreground border-primary"
+                          : "bg-secondary text-muted-foreground border-border hover:border-primary/40"
+                      }`}
+                    >
+                      {pt === "" ? "None" : pt === "adult" ? "Adult" : "Paed"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {addMode === "url" && (
               <>
@@ -568,7 +603,7 @@ export default function AdminLibraryPage() {
                 <label className="text-xs font-medium text-muted-foreground mb-1 block">Bucket</label>
                 <select
                   value={editForm.bucket}
-                  onChange={(e) => setEditForm((f) => ({ ...f, bucket: e.target.value as Bucket }))}
+                  onChange={(e) => setEditForm((f) => ({ ...f, bucket: e.target.value as Bucket, patientType: "" }))}
                   className="w-full px-3 py-2 text-sm bg-secondary border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 text-primary"
                 >
                   {BUCKETS.map((b) => <option key={b} value={b}>{b}</option>)}
@@ -585,6 +620,33 @@ export default function AdminLibraryPage() {
                 </select>
               </div>
             </div>
+
+            {editForm.bucket === "Protocols" && (
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Patient Type</label>
+                <div className="flex gap-2">
+                  {(["", "adult", "paed"] as const).map((pt) => (
+                    <button
+                      key={pt}
+                      type="button"
+                      data-testid={`button-patient-type-edit-${pt || "none"}`}
+                      onClick={() => setEditForm((f) => ({ ...f, patientType: pt }))}
+                      className={`flex-1 py-2 text-xs font-semibold rounded-lg border transition-colors ${
+                        editForm.patientType === pt
+                          ? pt === "adult"
+                            ? "bg-blue-600 text-white border-blue-600"
+                            : pt === "paed"
+                            ? "bg-orange-500 text-white border-orange-500"
+                            : "bg-primary text-primary-foreground border-primary"
+                          : "bg-secondary text-muted-foreground border-border hover:border-primary/40"
+                      }`}
+                    >
+                      {pt === "" ? "None" : pt === "adult" ? "Adult" : "Paed"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-2">
               <div>

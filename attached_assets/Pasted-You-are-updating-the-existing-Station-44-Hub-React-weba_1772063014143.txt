@@ -1,0 +1,152 @@
+You are updating the existing Station 44 Hub React webapp.
+
+This task is Phase 1 only:
+Operational Safety + Notification Stability.
+
+Admin Mode is already implemented and must NOT be modified.
+
+Do NOT implement any Phase 2+ features.
+
+========================================
+PHASE 1 OBJECTIVES
+========================================
+
+1) Protocol Adult / Paed Safety Label System
+2) Notification & Unread Logic Audit
+
+========================================
+1️⃣ PROTOCOL SAFETY LABEL SYSTEM
+========================================
+
+Current issue:
+Protocols display file-type labels (e.g. PDF).
+This creates ambiguity under operational stress.
+
+Goal:
+Replace file-type labels in the Protocols bucket ONLY with:
+
+- Adult → Blue badge
+- Paed → Orange/Red badge
+
+Important:
+Use label text:
+- "Adult"
+- "Paed"
+
+Do NOT use “Pediatric”.
+
+Scope:
+- Applies ONLY to bucket: "Protocols"
+- Do NOT modify:
+  - SOP bucket
+  - Others bucket
+
+Data Model Update:
+
+For Protocol items, ensure metadata supports:
+
+- patientType: "adult" | "paed" | null
+
+Admin Behavior:
+
+If bucket = "Protocols":
+- Show optional selector:
+  - Adult
+  - Paed
+- Store value as:
+  - "adult"
+  - "paed"
+
+If bucket ≠ "Protocols":
+- Do NOT show this selector.
+
+Display Rules:
+
+If bucket = Protocols:
+- If patientType = "adult":
+  - Show Blue badge with text: Adult
+- If patientType = "paed":
+  - Show Orange/Red badge with text: Paed
+- If patientType = null:
+  - Show neutral badge: "Protocol"
+- Do NOT show file-type label (PDF/DOCX/etc.) in Protocols bucket.
+
+If bucket ≠ Protocols:
+- Continue showing file-type label as before.
+
+Design Requirements:
+
+- High contrast.
+- Clear visual distinction.
+- Adult and Paed protocols with similar titles must NOT look identical.
+- Badge must be readable under mobile conditions.
+- Do not add clutter.
+
+Accessibility:
+Ensure sufficient contrast ratio for badge text and background.
+
+========================================
+2️⃣ NOTIFICATION & UNREAD LOGIC AUDIT
+========================================
+
+Audit and stabilize unread logic across:
+
+- News
+- Library items
+- Library buckets
+- Global bell
+
+Unread Determination:
+
+An item is unread if:
+- Its ID is NOT in localStorage read list
+- AND (for news) it is active (not expired)
+
+localStorage keys:
+
+- news:read (array of ids)
+- library:read (array of ids)
+
+Behavior Requirements:
+
+- Opening an unread item:
+  - Immediately mark as read
+  - Update UI instantly
+- Bucket unread count:
+  - Sum of unread items in that bucket
+- Global bell:
+  - Sum of all unread news + unread library items
+
+Fix / Verify:
+
+- No double counting.
+- Expired news must NOT count as unread.
+- No unread items reappear after refresh.
+- Read state persists after reload.
+- Switching tabs does NOT reset unread.
+- Fade-out animation consistent and smooth.
+
+Testing Requirements:
+
+- Open unread item → badge decreases immediately.
+- Refresh page → unread state persists.
+- Expired news does not trigger unread.
+- No console errors.
+- Mobile behavior stable.
+
+
+========================================
+ACCEPTANCE CRITERIA
+========================================
+
+✔ Protocols show Adult / Paed badge instead of file-type.
+✔ SOP and Others unchanged.
+✔ Unread counts accurate and stable.
+✔ Global bell correct.
+✔ Expired news excluded.
+✔ No UI clutter added.
+✔ Works cleanly on mobile viewport.
+
+Implement changes within existing structure.
+Do not refactor unrelated systems.
+Keep implementation clean and modular.
