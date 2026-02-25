@@ -22,8 +22,12 @@ export async function registerRoutes(
     try {
       const items = await storage.getNewsItems();
       const now = new Date();
-      const active = items.filter((item) => new Date(item.expiresAt) > now);
-      const expired = items.filter((item) => new Date(item.expiresAt) <= now);
+      const active = items.filter(
+        (item) => item.pinned === true || !item.expiresAt || new Date(item.expiresAt) > now
+      );
+      const expired = items.filter(
+        (item) => !item.pinned && item.expiresAt && new Date(item.expiresAt) <= now
+      );
       res.json({ active, expired });
     } catch (err) {
       console.error(err);
@@ -56,14 +60,19 @@ export async function registerRoutes(
         return res.status(400).json({ message: "Validation failed", errors: parsed.error.flatten() });
       }
 
-      const { title, expiresAt } = parsed.data;
+      const { title, expiresAt, pinned } = parsed.data;
       if (!title.trim()) {
         return res.status(400).json({ message: "Title is required" });
       }
 
-      const expiresDate = new Date(expiresAt);
-      if (isNaN(expiresDate.getTime()) || expiresDate <= new Date()) {
-        return res.status(400).json({ message: "Expiry must be a valid future datetime" });
+      if (!pinned) {
+        if (!expiresAt) {
+          return res.status(400).json({ message: "Expiry date is required for non-pinned items" });
+        }
+        const expiresDate = new Date(expiresAt);
+        if (isNaN(expiresDate.getTime()) || expiresDate <= new Date()) {
+          return res.status(400).json({ message: "Expiry must be a valid future datetime" });
+        }
       }
 
       const newItem = {
@@ -71,7 +80,7 @@ export async function registerRoutes(
         title: parsed.data.title.trim(),
         body: parsed.data.body ?? "",
         createdAt: new Date().toISOString(),
-        expiresAt: parsed.data.expiresAt,
+        ...(pinned ? { pinned: true } : { expiresAt: parsed.data.expiresAt }),
       };
 
       await storage.saveNewsItem(newItem);
@@ -79,6 +88,40 @@ export async function registerRoutes(
     } catch (err) {
       console.error(err);
       res.status(500).json({ message: "Failed to save news item" });
+    }
+  });
+
+  app.put("/api/news/:id", async (req, res) => {
+    try {
+      const adminPin = process.env.REPLIT_NEWS_ADMIN_PIN;
+      const { pin, title, body, expiresAt, pinned } = req.body;
+
+      if (!adminPin) return res.status(500).json({ message: "Admin PIN not configured" });
+      if (pin !== adminPin) return res.status(401).json({ message: "Invalid PIN" });
+      if (!title || !title.trim()) return res.status(400).json({ message: "Title is required" });
+
+      if (!pinned) {
+        if (!expiresAt) return res.status(400).json({ message: "Expiry date is required for non-pinned items" });
+        const expiresDate = new Date(expiresAt);
+        if (isNaN(expiresDate.getTime())) return res.status(400).json({ message: "Invalid expiry date" });
+      }
+
+      const items = await storage.getNewsItems();
+      const idx = items.findIndex((i) => i.id === req.params.id);
+      if (idx === -1) return res.status(404).json({ message: "News item not found" });
+
+      const updated = {
+        ...items[idx],
+        title: title.trim(),
+        body: body ?? "",
+        ...(pinned ? { pinned: true, expiresAt: undefined } : { pinned: false, expiresAt }),
+      };
+      items[idx] = updated;
+      await storage.saveAllNewsItems(items);
+      res.json(updated);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to update news item" });
     }
   });
 

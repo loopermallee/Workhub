@@ -8,13 +8,13 @@ import { ItemCard } from "@/components/ItemCard";
 import { ContentDrawer } from "@/components/ContentDrawer";
 import { CategoryDrawer } from "@/components/CategoryDrawer";
 import { useAppData, searchItems, getCategoryUpdatesCount } from "@/hooks/use-app-data";
+import { getCategoryColor } from "@/lib/categoryColors";
 import type { Category, Item } from "@shared/schema";
 
 export default function Home() {
   const { data, isLoading, isError } = useAppData();
   const [searchQuery, setSearchQuery] = useState("");
-  
-  // Modals/Drawers State
+
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [selectedContentItem, setSelectedContentItem] = useState<Item | null>(null);
 
@@ -43,7 +43,7 @@ export default function Home() {
     );
   }
 
-  const { news, categories, items } = data;
+  const { categories, items } = data;
   const isSearching = searchQuery.trim().length > 0;
   const searchResults = isSearching ? searchItems(items, searchQuery) : [];
 
@@ -51,30 +51,33 @@ export default function Home() {
     if (item.type === "content") {
       setSelectedContentItem(item);
     }
-    // Link items handle their own click in the ItemCard
   };
 
   return (
     <MobileLayout>
       <div className="pb-8">
         {!isSearching && <ImportantNewsCard />}
-        
+
         <div className={isSearching ? "" : "mt-2"}>
           <SearchBar value={searchQuery} onChange={setSearchQuery} />
         </div>
 
         <div className="px-4 mt-4">
           {isSearching ? (
-            // Search Results View
             <div className="space-y-4">
               <h2 className="font-display font-semibold text-sm text-muted-foreground uppercase tracking-wider">
                 Search Results ({searchResults.length})
               </h2>
-              
+
               {searchResults.length > 0 ? (
                 <div className="bg-background rounded-xl border border-border shadow-sm overflow-hidden">
                   {searchResults.map(item => (
-                    <ItemCard key={item.id} item={item} onClick={handleItemClick} />
+                    <ItemCard
+                      key={item.id}
+                      item={item}
+                      onClick={handleItemClick}
+                      categoryColor={getCategoryColor(item.categoryId)}
+                    />
                   ))}
                 </div>
               ) : (
@@ -85,7 +88,6 @@ export default function Home() {
               )}
             </div>
           ) : (
-            // Default Category Grid View
             <div className="space-y-4">
               <h2 className="font-display font-semibold text-sm text-muted-foreground uppercase tracking-wider ml-1">
                 Browse Resources
@@ -105,7 +107,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Slide-over Drawers for mobile drill-downs */}
       <CategoryDrawer
         category={selectedCategory}
         items={items.filter(i => i.categoryId === selectedCategory?.id)}
@@ -119,7 +120,6 @@ export default function Home() {
         isOpen={selectedContentItem !== null}
         onClose={() => setSelectedContentItem(null)}
       />
-      
     </MobileLayout>
   );
 }

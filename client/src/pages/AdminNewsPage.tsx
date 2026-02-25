@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { ArrowLeft, Clock, Trash2 } from "lucide-react";
+import { ArrowLeft, Clock, Trash2, Pencil, Pin } from "lucide-react";
 import { motion } from "framer-motion";
 import { MobileLayout } from "@/components/layout/MobileLayout";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -19,7 +19,8 @@ interface NewsResponse {
   expired: NewsItem[];
 }
 
-function formatDate(iso: string) {
+function formatDate(iso: string | undefined) {
+  if (!iso) return "—";
   return new Date(iso).toLocaleDateString("en-SG", {
     day: "numeric",
     month: "short",
@@ -95,16 +96,126 @@ function PinModal({ onSuccess }: { onSuccess: (pin: string) => void }) {
   );
 }
 
+interface NewsFormState {
+  title: string;
+  body: string;
+  expiresAt: string;
+  pinned: boolean;
+}
+
+function NewsForm({
+  initial,
+  onSubmit,
+  isPending,
+  submitLabel,
+  error,
+}: {
+  initial: NewsFormState;
+  onSubmit: (values: NewsFormState) => void;
+  isPending: boolean;
+  submitLabel: string;
+  error: string;
+}) {
+  const [title, setTitle] = useState(initial.title);
+  const [body, setBody] = useState(initial.body);
+  const [expiresAt, setExpiresAt] = useState(initial.expiresAt);
+  const [pinned, setPinned] = useState(initial.pinned);
+  const [localError, setLocalError] = useState("");
+
+  const handleSubmit = () => {
+    if (!title.trim()) { setLocalError("Title is required"); return; }
+    if (!pinned && !expiresAt) { setLocalError("Expiry date is required for non-pinned items"); return; }
+    if (!pinned && new Date(expiresAt) <= new Date()) { setLocalError("Expiry must be in the future"); return; }
+    setLocalError("");
+    onSubmit({ title, body, expiresAt, pinned });
+  };
+
+  const displayError = localError || error;
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+          Title <span className="text-destructive">*</span>
+        </label>
+        <Input
+          data-testid="input-news-title"
+          placeholder="News headline..."
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+        />
+      </div>
+
+      <div>
+        <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+          Body
+        </label>
+        <Textarea
+          data-testid="input-news-body"
+          placeholder="Additional details (optional)..."
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          rows={3}
+          className="resize-none"
+        />
+      </div>
+
+      <div className="flex items-center gap-2">
+        <input
+          id="pinned-toggle"
+          data-testid="input-news-pinned"
+          type="checkbox"
+          checked={pinned}
+          onChange={(e) => setPinned(e.target.checked)}
+          className="w-4 h-4 rounded border-border accent-primary cursor-pointer"
+        />
+        <label htmlFor="pinned-toggle" className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider cursor-pointer select-none">
+          <Pin className="w-3 h-3" />
+          Pinned (no expiry)
+        </label>
+      </div>
+
+      {!pinned && (
+        <div>
+          <label className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+            Expires at <span className="text-destructive">*</span>
+          </label>
+          <Input
+            data-testid="input-news-expires"
+            type="datetime-local"
+            value={expiresAt}
+            onChange={(e) => setExpiresAt(e.target.value)}
+          />
+        </div>
+      )}
+
+      {displayError && (
+        <p data-testid="text-form-error" className="text-xs text-destructive">
+          {displayError}
+        </p>
+      )}
+
+      <Button
+        data-testid="button-publish"
+        className="w-full"
+        onClick={handleSubmit}
+        disabled={isPending}
+      >
+        {isPending ? `${submitLabel}...` : submitLabel}
+      </Button>
+    </div>
+  );
+}
+
 export default function AdminNewsPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const [authedPin, setAuthedPin] = useState<string | null>(null);
-  const [title, setTitle] = useState("");
-  const [body, setBody] = useState("");
-  const [expiresAt, setExpiresAt] = useState("");
-  const [formError, setFormError] = useState("");
+  const [publishError, setPublishError] = useState("");
+  const [editingItem, setEditingItem] = useState<NewsItem | null>(null);
+  const [editError, setEditError] = useState("");
 
   useEffect(() => {
     const stored = sessionStorage.getItem("admin:authed");
@@ -117,25 +228,53 @@ export default function AdminNewsPage() {
   });
 
   const publishMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (values: NewsFormState) => {
       const res = await apiRequest("POST", "/api/news", {
         pin: authedPin,
-        title,
-        body,
-        expiresAt,
+        title: values.title,
+        body: values.body,
+        expiresAt: values.pinned ? undefined : values.expiresAt,
+        pinned: values.pinned,
       });
       return res.json();
     },
     onSuccess: () => {
       toast({ title: "Published", description: "News item posted successfully.", duration: 3000 });
-      setTitle("");
-      setBody("");
-      setExpiresAt("");
-      setFormError("");
+      setPublishError("");
       queryClient.invalidateQueries({ queryKey: ["/api/news"] });
     },
     onError: (err: Error) => {
-      setFormError(err.message || "Failed to publish");
+      setPublishError(err.message || "Failed to publish");
+    },
+  });
+
+  const editMutation = useMutation({
+    mutationFn: async ({ id, values }: { id: string; values: NewsFormState }) => {
+      const res = await fetch(`/api/news/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pin: authedPin,
+          title: values.title,
+          body: values.body,
+          expiresAt: values.pinned ? undefined : values.expiresAt,
+          pinned: values.pinned,
+        }),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.message || "Failed to update");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Updated", description: "News item updated successfully.", duration: 3000 });
+      setEditingItem(null);
+      setEditError("");
+      queryClient.invalidateQueries({ queryKey: ["/api/news"] });
+    },
+    onError: (err: Error) => {
+      setEditError(err.message || "Failed to update");
     },
   });
 
@@ -152,14 +291,6 @@ export default function AdminNewsPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/news"] });
     },
   });
-
-  const handlePublish = () => {
-    if (!title.trim()) { setFormError("Title is required"); return; }
-    if (!expiresAt) { setFormError("Expiry date is required"); return; }
-    if (new Date(expiresAt) <= new Date()) { setFormError("Expiry must be in the future"); return; }
-    setFormError("");
-    publishMutation.mutate();
-  };
 
   const handlePinSuccess = (pin: string) => {
     sessionStorage.setItem("admin:authed", pin);
@@ -189,71 +320,14 @@ export default function AdminNewsPage() {
         </div>
 
         <div className="px-4 space-y-6 mt-2">
-          <div className="bg-background border border-border rounded-xl p-4 space-y-3 shadow-sm">
-            <div>
-              <label
-                htmlFor="news-title"
-                className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5"
-              >
-                Title <span className="text-destructive">*</span>
-              </label>
-              <Input
-                id="news-title"
-                data-testid="input-news-title"
-                placeholder="News headline..."
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-              />
-            </div>
-
-            <div>
-              <label
-                htmlFor="news-body"
-                className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5"
-              >
-                Body
-              </label>
-              <Textarea
-                id="news-body"
-                data-testid="input-news-body"
-                placeholder="Additional details (optional)..."
-                value={body}
-                onChange={(e) => setBody(e.target.value)}
-                rows={3}
-                className="resize-none"
-              />
-            </div>
-
-            <div>
-              <label
-                htmlFor="news-expires"
-                className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5"
-              >
-                Expires at <span className="text-destructive">*</span>
-              </label>
-              <Input
-                id="news-expires"
-                data-testid="input-news-expires"
-                type="datetime-local"
-                value={expiresAt}
-                onChange={(e) => setExpiresAt(e.target.value)}
-              />
-            </div>
-
-            {formError && (
-              <p data-testid="text-form-error" className="text-xs text-destructive">
-                {formError}
-              </p>
-            )}
-
-            <Button
-              data-testid="button-publish"
-              className="w-full"
-              onClick={handlePublish}
-              disabled={publishMutation.isPending}
-            >
-              {publishMutation.isPending ? "Publishing..." : "Publish"}
-            </Button>
+          <div className="bg-background border border-border rounded-xl p-4 shadow-sm">
+            <NewsForm
+              initial={{ title: "", body: "", expiresAt: "", pinned: false }}
+              onSubmit={(values) => publishMutation.mutate(values)}
+              isPending={publishMutation.isPending}
+              submitLabel="Publish"
+              error={publishError}
+            />
           </div>
 
           <section>
@@ -275,41 +349,59 @@ export default function AdminNewsPage() {
             ) : (
               <div className="space-y-2">
                 {allItems.map((item) => {
-                  const isExpired = new Date(item.expiresAt) <= new Date();
+                  const isExpired = !item.pinned && item.expiresAt && new Date(item.expiresAt) <= new Date();
                   return (
                     <div
                       key={item.id}
                       data-testid={`card-admin-news-${item.id}`}
-                      className="p-3 rounded-xl border border-border bg-background shadow-sm flex items-start justify-between gap-3"
+                      className="p-3 rounded-xl border border-border bg-background shadow-sm"
                     >
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <p className="text-sm font-semibold text-foreground truncate">{item.title}</p>
-                          <Badge
-                            variant={isExpired ? "outline" : "default"}
-                            className="text-[10px] px-1.5 py-0 shrink-0"
-                          >
-                            {isExpired ? "Expired" : "Active"}
-                          </Badge>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                            <p className="text-sm font-semibold text-foreground truncate">{item.title}</p>
+                            {item.pinned ? (
+                              <Badge className="text-[10px] px-1.5 py-0 shrink-0 bg-amber-500 hover:bg-amber-500 text-white">
+                                Pinned
+                              </Badge>
+                            ) : (
+                              <Badge
+                                variant={isExpired ? "outline" : "default"}
+                                className="text-[10px] px-1.5 py-0 shrink-0"
+                              >
+                                {isExpired ? "Expired" : "Active"}
+                              </Badge>
+                            )}
+                          </div>
+                          {item.body && (
+                            <p className="text-xs text-muted-foreground truncate">{item.body}</p>
+                          )}
+                          <div className="flex items-center gap-1 mt-1">
+                            <Clock className="w-3 h-3 text-muted-foreground/50" />
+                            <span className="text-[10px] text-muted-foreground/60">
+                              {formatDate(item.createdAt)}
+                              {item.pinned ? " · No expiry" : item.expiresAt ? ` · Expires ${formatDate(item.expiresAt)}` : ""}
+                            </span>
+                          </div>
                         </div>
-                        {item.body && (
-                          <p className="text-xs text-muted-foreground truncate">{item.body}</p>
-                        )}
-                        <div className="flex items-center gap-1 mt-1">
-                          <Clock className="w-3 h-3 text-muted-foreground/50" />
-                          <span className="text-[10px] text-muted-foreground/60">
-                            {formatDate(item.createdAt)} · Expires {formatDate(item.expiresAt)}
-                          </span>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            data-testid={`button-edit-news-${item.id}`}
+                            onClick={() => { setEditingItem(item); setEditError(""); }}
+                            className="p-1.5 text-muted-foreground hover:text-primary transition-colors rounded-lg hover:bg-secondary"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            data-testid={`button-delete-news-${item.id}`}
+                            onClick={() => deleteMutation.mutate(item.id)}
+                            disabled={deleteMutation.isPending}
+                            className="p-1.5 text-muted-foreground hover:text-destructive transition-colors rounded-lg hover:bg-destructive/10"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
                       </div>
-                      <button
-                        data-testid={`button-delete-news-${item.id}`}
-                        onClick={() => deleteMutation.mutate(item.id)}
-                        disabled={deleteMutation.isPending}
-                        className="p-1.5 text-muted-foreground hover:text-destructive transition-colors rounded-lg hover:bg-destructive/10 shrink-0"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
                     </div>
                   );
                 })}
@@ -318,6 +410,31 @@ export default function AdminNewsPage() {
           </section>
         </div>
       </div>
+
+      <Dialog open={!!editingItem} onOpenChange={(open) => { if (!open) { setEditingItem(null); setEditError(""); } }}>
+        <DialogContent className="max-w-sm mx-auto rounded-xl p-5">
+          <DialogTitle className="text-base font-semibold">Edit News Item</DialogTitle>
+          <DialogDescription className="sr-only">Edit the fields for this news item.</DialogDescription>
+          {editingItem && (
+            <div className="mt-2">
+              <NewsForm
+                initial={{
+                  title: editingItem.title,
+                  body: editingItem.body,
+                  expiresAt: editingItem.expiresAt
+                    ? new Date(editingItem.expiresAt).toISOString().slice(0, 16)
+                    : "",
+                  pinned: !!editingItem.pinned,
+                }}
+                onSubmit={(values) => editMutation.mutate({ id: editingItem.id, values })}
+                isPending={editMutation.isPending}
+                submitLabel="Save changes"
+                error={editError}
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </MobileLayout>
   );
 }

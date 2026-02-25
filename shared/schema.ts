@@ -13,7 +13,8 @@ export const newsItemSchema = z.object({
   title: z.string(),
   body: z.string(),
   createdAt: z.string(),
-  expiresAt: z.string()
+  expiresAt: z.string().optional(),
+  pinned: z.boolean().optional(),
 });
 
 export const insertNewsItemSchema = newsItemSchema.omit({ id: true, createdAt: true });

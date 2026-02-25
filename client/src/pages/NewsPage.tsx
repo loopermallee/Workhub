@@ -1,6 +1,7 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { ArrowLeft, Clock, CheckCircle } from "lucide-react";
+import { ArrowLeft, Clock, CheckCircle, Pin } from "lucide-react";
 import { MobileLayout } from "@/components/layout/MobileLayout";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -29,7 +30,8 @@ function markRead(id: string) {
   }
 }
 
-function formatDate(iso: string) {
+function formatDate(iso: string | undefined) {
+  if (!iso) return "";
   return new Date(iso).toLocaleDateString("en-SG", {
     day: "numeric",
     month: "short",
@@ -45,11 +47,11 @@ interface NewsItemCardProps {
 }
 
 function NewsItemCard({ item, isExpired }: NewsItemCardProps) {
-  const readIds = getReadIds();
-  const isRead = readIds.includes(item.id);
+  const [isRead, setIsRead] = useState(() => getReadIds().includes(item.id));
 
   const handleTap = () => {
     markRead(item.id);
+    setIsRead(true);
   };
 
   return (
@@ -65,14 +67,19 @@ function NewsItemCard({ item, isExpired }: NewsItemCardProps) {
       }`}
     >
       <div className="flex items-start justify-between gap-2 mb-1">
-        <h3
-          data-testid={`text-news-title-${item.id}`}
-          className={`text-sm font-semibold leading-snug ${
-            isExpired ? "text-muted-foreground" : "text-foreground"
-          }`}
-        >
-          {item.title}
-        </h3>
+        <div className="flex items-center gap-1.5 min-w-0">
+          <h3
+            data-testid={`text-news-title-${item.id}`}
+            className={`text-sm font-semibold leading-snug ${
+              isExpired ? "text-muted-foreground" : "text-foreground"
+            }`}
+          >
+            {item.title}
+          </h3>
+          {item.pinned && !isExpired && (
+            <Pin className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+          )}
+        </div>
         <div className="flex items-center gap-1.5 shrink-0">
           {isRead && !isExpired && (
             <CheckCircle className="w-3.5 h-3.5 text-muted-foreground/60" />
@@ -103,9 +110,14 @@ function NewsItemCard({ item, isExpired }: NewsItemCardProps) {
         <span className="text-[11px] text-muted-foreground/60">
           {formatDate(item.createdAt)}
         </span>
-        {isExpired && (
+        {isExpired && item.expiresAt && (
           <span className="text-[11px] text-muted-foreground/50 ml-2">
             · Expired {formatDate(item.expiresAt)}
+          </span>
+        )}
+        {!isExpired && item.pinned && (
+          <span className="text-[11px] text-amber-600 dark:text-amber-400 ml-2 font-medium">
+            · Pinned
           </span>
         )}
       </div>

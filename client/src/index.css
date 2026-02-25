@@ -6,8 +6,8 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;      /* #FFFFFF */
-    --foreground: 243 47% 9%;     /* #0D0C22 */
+    --background: 0 0% 100%;
+    --foreground: 243 47% 9%;
     
     --card: 0 0% 100%;
     --card-foreground: 243 47% 9%;
@@ -15,29 +15,59 @@
     --popover: 0 0% 100%;
     --popover-foreground: 243 47% 9%;
     
-    --primary: 243 47% 9%;        /* #0D0C22 */
+    --primary: 243 47% 9%;
     --primary-foreground: 0 0% 100%;
     
-    --secondary: 0 0% 96%;        /* Light subtle gray */
+    --secondary: 0 0% 96%;
     --secondary-foreground: 243 47% 9%;
     
     --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 50%; /* #808080 */
+    --muted-foreground: 0 0% 50%;
     
-    --accent: 0 0% 100%;          /* #FFFFFF */
+    --accent: 0 0% 100%;
     --accent-foreground: 243 47% 9%;
     
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 0 0% 92%;           /* Very thin/light divider color */
+    --border: 0 0% 92%;
     --input: 0 0% 92%;
     --ring: 243 47% 9%;
     
-    --radius: 0.25rem;            /* 4px border radius as requested */
+    --radius: 0.25rem;
 
     --font-sans: 'Inter', sans-serif;
     --font-display: 'Plus Jakarta Sans', sans-serif;
+  }
+
+  .dark {
+    --background: 243 47% 9%;
+    --foreground: 0 0% 93%;
+
+    --card: 243 40% 13%;
+    --card-foreground: 0 0% 93%;
+
+    --popover: 243 40% 13%;
+    --popover-foreground: 0 0% 93%;
+
+    --primary: 214 80% 65%;
+    --primary-foreground: 243 47% 9%;
+
+    --secondary: 243 35% 17%;
+    --secondary-foreground: 0 0% 93%;
+
+    --muted: 243 35% 17%;
+    --muted-foreground: 0 0% 55%;
+
+    --accent: 243 35% 17%;
+    --accent-foreground: 0 0% 93%;
+
+    --destructive: 0 70% 55%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 243 30% 22%;
+    --input: 243 30% 22%;
+    --ring: 214 80% 65%;
   }
 
   * {
@@ -47,7 +77,6 @@
   body {
     @apply bg-background text-foreground antialiased selection:bg-primary selection:text-primary-foreground;
     font-family: var(--font-sans);
-    /* Mobile webapp specific optimizations */
     -webkit-tap-highlight-color: transparent;
     overscroll-behavior-y: none;
   }
@@ -66,7 +95,6 @@
     padding-top: env(safe-area-inset-top);
   }
   
-  /* Custom scrollbar hiding for clean mobile lists */
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
@@ -76,7 +104,6 @@
   }
 }
 
-/* Vaul drawer custom styles for premium feel */
 [data-vaul-drawer] {
   font-family: var(--font-sans);
 }

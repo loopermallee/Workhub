@@ -6,6 +6,7 @@ export interface IStorage {
   getAppData(): Promise<AppData>;
   getNewsItems(): Promise<NewsItem[]>;
   saveNewsItem(item: NewsItem): Promise<void>;
+  saveAllNewsItems(items: NewsItem[]): Promise<void>;
   deleteNewsItem(id: string): Promise<void>;
 }
 
@@ -30,6 +31,11 @@ export class FileStorage implements IStorage {
     const filePath = path.resolve(process.cwd(), "shared/newsData.json");
     const items = await this.getNewsItems();
     items.unshift(item);
+    await fs.writeFile(filePath, JSON.stringify(items, null, 2), "utf-8");
+  }
+
+  async saveAllNewsItems(items: NewsItem[]): Promise<void> {
+    const filePath = path.resolve(process.cwd(), "shared/newsData.json");
     await fs.writeFile(filePath, JSON.stringify(items, null, 2), "utf-8");
   }
 

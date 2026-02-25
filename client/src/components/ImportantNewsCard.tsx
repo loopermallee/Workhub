@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import { AlertCircle, ChevronDown, ChevronUp, ArrowRight } from "lucide-react";
+import { AlertCircle, ChevronDown, ChevronUp, ArrowRight, Pin } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "wouter";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -118,10 +118,7 @@ export function ImportantNewsCard() {
             >
               <div className="px-4 pb-3 max-h-64 overflow-y-auto space-y-2">
                 {active.length === 0 ? (
-                  <p
-                    data-testid="text-no-updates"
-                    className="text-sm text-primary-foreground/70 py-2"
-                  >
+                  <p data-testid="text-no-updates" className="text-sm text-primary-foreground/70 py-2">
                     No current updates
                   </p>
                 ) : (
@@ -131,9 +128,14 @@ export function ImportantNewsCard() {
                       data-testid={`text-news-item-${item.id}`}
                       className="pt-2 border-t border-primary-foreground/10 first:border-0 first:pt-0"
                     >
-                      <p className="text-[11px] text-primary-foreground/60 font-medium mb-0.5">
-                        {formatDate(item.createdAt)}
-                      </p>
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <p className="text-[11px] text-primary-foreground/60 font-medium">
+                          {formatDate(item.createdAt)}
+                        </p>
+                        {item.pinned && (
+                          <Pin className="w-3 h-3 text-primary-foreground/50" />
+                        )}
+                      </div>
                       <p className="text-sm font-medium leading-snug">{item.title}</p>
                       {item.body && (
                         <p className="text-xs text-primary-foreground/75 mt-1 leading-relaxed">
@@ -165,10 +167,7 @@ export function ImportantNewsCard() {
             >
               <div className="px-4 pb-3 space-y-2">
                 {previewItems.length === 0 ? (
-                  <p
-                    data-testid="text-no-updates-collapsed"
-                    className="text-sm text-primary-foreground/70"
-                  >
+                  <p data-testid="text-no-updates-collapsed" className="text-sm text-primary-foreground/70">
                     No current updates
                   </p>
                 ) : (
@@ -179,7 +178,10 @@ export function ImportantNewsCard() {
                       className="pt-2 border-t border-primary-foreground/10 first:border-0 first:pt-0"
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-medium leading-snug">{item.title}</p>
+                        <div className="flex items-center gap-1 min-w-0">
+                          <p className="text-sm font-medium leading-snug truncate">{item.title}</p>
+                          {item.pinned && <Pin className="w-3 h-3 text-primary-foreground/50 shrink-0" />}
+                        </div>
                         <p className="text-[11px] text-primary-foreground/60 font-medium shrink-0">
                           {formatDate(item.createdAt)}
                         </p>
@@ -219,11 +221,7 @@ export function ImportantNewsCard() {
                 {pinError}
               </p>
             )}
-            <Button
-              data-testid="button-pin-submit"
-              onClick={handlePinSubmit}
-              className="w-full"
-            >
+            <Button data-testid="button-pin-submit" onClick={handlePinSubmit} className="w-full">
               Unlock
             </Button>
           </motion.div>
