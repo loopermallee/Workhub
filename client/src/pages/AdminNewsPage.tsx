@@ -316,7 +316,14 @@ export default function AdminNewsPage() {
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <h1 className="font-display font-bold text-lg text-foreground">Post News</h1>
+          <h1 className="font-display font-bold text-lg text-foreground flex-1">Post News</h1>
+          <button
+            data-testid="button-goto-library-admin"
+            onClick={() => setLocation("/admin/library")}
+            className="text-[11px] font-semibold text-primary/70 hover:text-primary bg-secondary px-3 py-1.5 rounded-lg transition-colors"
+          >
+            Library Admin
+          </button>
         </div>
 
         <div className="px-4 space-y-6 mt-2">

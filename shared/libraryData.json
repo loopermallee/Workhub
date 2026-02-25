@@ -1,0 +1,44 @@
+[
+  {
+    "id": "seed-001",
+    "bucket": "SOP",
+    "title": "SCDF Standard Operating Procedures — Fire Response",
+    "fileType": "pdf",
+    "source": "url",
+    "url": "https://www.scdf.gov.sg/docs/default-source/scdf-library/sops/fire-response.pdf",
+    "version": "v2.3",
+    "lastUpdated": "2025-01-15",
+    "createdAt": "2025-01-15T08:00:00.000Z",
+    "updatedAt": "2025-01-15T08:00:00.000Z",
+    "tags": ["fire", "response", "SOP"],
+    "summary": "Standard procedures for fire emergency response including crew deployment and equipment checklist."
+  },
+  {
+    "id": "seed-002",
+    "bucket": "Protocols",
+    "title": "Mass Casualty Incident (MCI) Protocol",
+    "fileType": "pdf",
+    "source": "url",
+    "url": "https://www.scdf.gov.sg/docs/default-source/scdf-library/protocols/mci.pdf",
+    "version": "v1.8",
+    "lastUpdated": "2024-11-20",
+    "createdAt": "2024-11-20T08:00:00.000Z",
+    "updatedAt": "2024-11-20T08:00:00.000Z",
+    "tags": ["MCI", "triage", "mass casualty"],
+    "summary": "Protocols for managing mass casualty incidents, including triage categories and resource allocation."
+  },
+  {
+    "id": "seed-003",
+    "bucket": "Others",
+    "title": "Station 44 Contact Directory",
+    "fileType": "link",
+    "source": "url",
+    "url": "https://docs.google.com/spreadsheets/d/example",
+    "version": "",
+    "lastUpdated": "2025-02-01",
+    "createdAt": "2025-02-01T08:00:00.000Z",
+    "updatedAt": "2025-02-01T08:00:00.000Z",
+    "tags": ["contacts", "directory"],
+    "summary": "Contact list for all Station 44 personnel and key external agencies."
+  }
+]

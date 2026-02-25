@@ -1,7 +1,11 @@
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { Bell, Home, FileText, Sun, CloudSun, Sunset, Moon } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { Bell, Home, FileText, Sun, CloudSun, Sunset, Moon, LogOut } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { getRecentUpdatesCount, useAppData } from "@/hooks/use-app-data";
+import { isAdminMode, clearAdminMode } from "@/lib/adminMode";
+import { getUnreadNewsCount, getUnreadLibraryCount } from "@/lib/readTracking";
+import type { NewsItem, LibraryItem } from "@shared/schema";
 
 interface MobileLayoutProps {
   children: React.ReactNode;
@@ -55,33 +59,56 @@ function getGreeting(): GreetingInfo {
   }
 }
 
-export function MobileLayout({ children }: MobileLayoutProps) {
-  const { toast } = useToast();
-  const [location, setLocation] = useLocation();
-  const { data } = useAppData();
+interface NewsResponse {
+  active: NewsItem[];
+  expired: NewsItem[];
+}
 
+export function MobileLayout({ children }: MobileLayoutProps) {
+  const [location, setLocation] = useLocation();
+  const [adminActive, setAdminActive] = useState(isAdminMode());
+
+  const { data } = useAppData();
   const totalRecentUpdates = getRecentUpdatesCount(data?.items);
   const greeting = getGreeting();
 
-  const isHome = location === "/";
+  const { data: newsData } = useQuery<NewsResponse>({
+    queryKey: ["/api/news"],
+    staleTime: 30000,
+  });
 
-  const handleHomeClick = () => {
+  const { data: libraryData } = useQuery<LibraryItem[]>({
+    queryKey: ["/api/library"],
+    staleTime: 30000,
+  });
+
+  const unreadNews = getUnreadNewsCount(newsData?.active ?? []);
+  const unreadLibrary = getUnreadLibraryCount(libraryData ?? []);
+  const totalUnread = unreadNews + unreadLibrary;
+
+  const isHome = location === "/";
+  const isLibrary = location.startsWith("/library");
+
+  const handleHomeClick = () => setLocation("/");
+  const handleProtocolsClick = () => setLocation("/library");
+
+  const handleExitAdmin = () => {
+    clearAdminMode();
+    setAdminActive(false);
     setLocation("/");
   };
 
-  const handleProtocolsClick = () => {
-    toast({
-      title: "Coming Soon",
-      description: "Protocols and SOPs are currently being updated.",
-      duration: 3000,
-    });
-  };
+  useEffect(() => {
+    setAdminActive(isAdminMode());
+  }, [location]);
 
   return (
     <div className="flex flex-col h-[100dvh] w-full max-w-md mx-auto bg-background overflow-hidden relative shadow-2xl sm:border-x sm:border-border">
 
       {/* Top Header */}
-      <header className="flex-shrink-0 pt-safe bg-background z-10 border-b border-border/50">
+      <header
+        className={`flex-shrink-0 pt-safe bg-background z-10 border-b border-border/50 ${adminActive ? "rainbow-border-bottom" : ""}`}
+      >
         <div className="flex items-center justify-between px-5 h-[60px]">
           <div className="flex flex-col justify-center">
             <h1 className="text-lg font-bold text-primary font-display tracking-tight leading-tight">
@@ -92,15 +119,36 @@ export function MobileLayout({ children }: MobileLayoutProps) {
               <span className="text-[11px] font-medium">{greeting.text}</span>
             </div>
           </div>
-          <button
-            className="relative p-2 -mr-2 rounded-full text-muted-foreground hover:bg-secondary hover:text-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20"
-            aria-label="Notifications"
-          >
-            <Bell className="w-5 h-5" strokeWidth={2.5} />
-            {totalRecentUpdates > 0 && (
-              <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-destructive rounded-full border-2 border-background shadow-sm" />
+
+          <div className="flex items-center gap-1">
+            {adminActive && (
+              <button
+                data-testid="button-exit-admin"
+                onClick={handleExitAdmin}
+                className="flex items-center gap-1 text-[10px] font-semibold text-destructive/80 hover:text-destructive bg-destructive/10 hover:bg-destructive/15 px-2 py-1 rounded-full transition-colors mr-1"
+                aria-label="Exit admin mode"
+              >
+                <LogOut className="w-3 h-3" />
+                Exit Admin
+              </button>
             )}
-          </button>
+            <button
+              className="relative p-2 -mr-2 rounded-full text-muted-foreground hover:bg-secondary hover:text-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20"
+              aria-label="Notifications"
+            >
+              <Bell className="w-5 h-5" strokeWidth={2.5} />
+              {totalUnread > 0 ? (
+                <span
+                  data-testid="badge-bell-count"
+                  className="absolute top-0.5 right-0.5 min-w-[16px] h-[16px] flex items-center justify-center text-[9px] font-bold bg-destructive text-destructive-foreground rounded-full px-0.5 border border-background"
+                >
+                  {totalUnread > 99 ? "99+" : totalUnread}
+                </span>
+              ) : totalRecentUpdates > 0 ? (
+                <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-destructive rounded-full border-2 border-background shadow-sm" />
+              ) : null}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -126,10 +174,19 @@ export function MobileLayout({ children }: MobileLayoutProps) {
           <button
             data-testid="button-nav-protocols"
             onClick={handleProtocolsClick}
-            className="flex flex-col items-center justify-center w-full h-full space-y-1 text-muted-foreground/50 hover:text-muted-foreground transition-colors focus:outline-none"
+            className={`flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors focus:outline-none relative ${
+              isLibrary ? "text-primary" : "text-muted-foreground/50 hover:text-muted-foreground"
+            }`}
           >
-            <FileText className="w-6 h-6" strokeWidth={2} />
-            <span className="text-[10px] font-medium">Protocols/SOP</span>
+            <div className="relative">
+              <FileText className="w-6 h-6" strokeWidth={isLibrary ? 2.5 : 2} />
+              {unreadLibrary > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[14px] h-[14px] flex items-center justify-center text-[8px] font-bold bg-destructive text-destructive-foreground rounded-full px-0.5">
+                  {unreadLibrary > 99 ? "99+" : unreadLibrary}
+                </span>
+              )}
+            </div>
+            <span className={`text-[10px] ${isLibrary ? "font-semibold" : "font-medium"}`}>Protocols/SOP</span>
           </button>
         </div>
       </nav>

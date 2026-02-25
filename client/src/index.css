@@ -104,6 +104,31 @@
   }
 }
 
+@keyframes rainbow-slide {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+.rainbow-border-bottom {
+  position: relative;
+}
+
+.rainbow-border-bottom::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    #ff0000, #ff8800, #ffff00, #00cc00,
+    #0088ff, #8800ff, #ff00cc, #ff0000
+  );
+  background-size: 200% 100%;
+  animation: rainbow-slide 2s linear infinite;
+}
+
 [data-vaul-drawer] {
   font-family: var(--font-sans);
 }

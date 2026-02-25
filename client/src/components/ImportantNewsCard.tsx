@@ -8,6 +8,8 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/compone
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import type { NewsItem } from "@shared/schema";
+import { setAdminMode } from "@/lib/adminMode";
+import { getUnreadNewsCount } from "@/lib/readTracking";
 
 interface NewsResponse {
   active: NewsItem[];
@@ -36,12 +38,13 @@ export function ImportantNewsCard() {
 
   const active = data?.active ?? [];
   const previewItems = isExpanded ? active : active.slice(0, 2);
+  const unreadCount = getUnreadNewsCount(active);
 
   const handleHeaderTap = useCallback(() => {
     const now = Date.now();
     tapTimestamps.current = tapTimestamps.current.filter((t) => now - t < 4000);
     tapTimestamps.current.push(now);
-    if (tapTimestamps.current.length >= 7) {
+    if (tapTimestamps.current.length >= 6) {
       tapTimestamps.current = [];
       setShowPinModal(true);
     }
@@ -68,7 +71,7 @@ export function ImportantNewsCard() {
         return;
       }
       if (res.ok) {
-        sessionStorage.setItem("admin:authed", pin);
+        setAdminMode(pin);
         setShowPinModal(false);
         setPin("");
         setPinError("");
@@ -96,6 +99,14 @@ export function ImportantNewsCard() {
           <div className="flex items-center space-x-2 font-display font-semibold text-sm">
             <AlertCircle className="w-4 h-4 text-primary-foreground/80" />
             <span>Important News</span>
+            {unreadCount > 0 && (
+              <span
+                data-testid="badge-news-unread"
+                className="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold bg-primary-foreground text-primary rounded-full"
+              >
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
+            )}
           </div>
           <div className="p-1 bg-primary-foreground/10 rounded-full">
             {isExpanded ? (

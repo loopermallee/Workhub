@@ -1,8 +1,34 @@
 import type { Express } from "express";
 import { type Server } from "http";
+import path from "path";
+import fs from "fs/promises";
+import multer from "multer";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
-import { insertNewsItemSchema } from "@shared/schema";
+import { insertNewsItemSchema, insertLibraryItemSchema } from "@shared/schema";
+
+function getAdminPin(): string {
+  return process.env.REPLIT_ADMIN_PIN ?? process.env.REPLIT_NEWS_ADMIN_PIN ?? "";
+}
+
+function inferFileType(mimetype: string, originalname: string): "pdf" | "docx" | "xlsx" | "pptx" | "link" {
+  if (mimetype === "application/pdf") return "pdf";
+  if (mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || originalname.endsWith(".docx")) return "docx";
+  if (mimetype === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" || originalname.endsWith(".xlsx")) return "xlsx";
+  if (mimetype === "application/vnd.openxmlformats-officedocument.presentationml.presentation" || originalname.endsWith(".pptx")) return "pptx";
+  return "link";
+}
+
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, "uploads/"),
+    filename: (_req, file, cb) => {
+      const safeName = file.originalname.replace(/[^a-zA-Z0-9._-]/g, "_");
+      cb(null, `${Date.now()}-${safeName}`);
+    },
+  }),
+  limits: { fileSize: 50 * 1024 * 1024 },
+});
 
 export async function registerRoutes(
   httpServer: Server,
@@ -36,7 +62,7 @@ export async function registerRoutes(
   });
 
   app.post("/api/news/verify-pin", async (req, res) => {
-    const adminPin = process.env.REPLIT_NEWS_ADMIN_PIN;
+    const adminPin = getAdminPin();
     const { pin } = req.body;
     if (!adminPin) return res.status(500).json({ message: "Admin PIN not configured" });
     if (pin !== adminPin) return res.status(401).json({ message: "Invalid PIN" });
@@ -45,7 +71,7 @@ export async function registerRoutes(
 
   app.post("/api/news", async (req, res) => {
     try {
-      const adminPin = process.env.REPLIT_NEWS_ADMIN_PIN;
+      const adminPin = getAdminPin();
       const { pin, ...body } = req.body;
 
       if (!adminPin) {
@@ -93,7 +119,7 @@ export async function registerRoutes(
 
   app.put("/api/news/:id", async (req, res) => {
     try {
-      const adminPin = process.env.REPLIT_NEWS_ADMIN_PIN;
+      const adminPin = getAdminPin();
       const { pin, title, body, expiresAt, pinned } = req.body;
 
       if (!adminPin) return res.status(500).json({ message: "Admin PIN not configured" });
@@ -127,7 +153,7 @@ export async function registerRoutes(
 
   app.delete("/api/news/:id", async (req, res) => {
     try {
-      const adminPin = process.env.REPLIT_NEWS_ADMIN_PIN;
+      const adminPin = getAdminPin();
       const pin = req.headers["x-admin-pin"] as string;
 
       if (!adminPin) {
@@ -142,6 +168,120 @@ export async function registerRoutes(
     } catch (err) {
       console.error(err);
       res.status(500).json({ message: "Failed to delete news item" });
+    }
+  });
+
+  app.get("/api/library", async (req, res) => {
+    try {
+      const items = await storage.getLibraryItems();
+      const sorted = [...items].sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+      res.json(sorted);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to load library" });
+    }
+  });
+
+  app.post("/api/library", async (req, res) => {
+    try {
+      const adminPin = getAdminPin();
+      const { pin, ...body } = req.body;
+
+      if (!adminPin) return res.status(500).json({ message: "Admin PIN not configured" });
+      if (pin !== adminPin) return res.status(401).json({ message: "Invalid PIN" });
+
+      const parsed = insertLibraryItemSchema.safeParse(body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: "Validation failed", errors: parsed.error.flatten() });
+      }
+
+      const now = new Date().toISOString();
+      const newItem = {
+        ...parsed.data,
+        id: `lib-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        createdAt: now,
+        updatedAt: now,
+        tags: parsed.data.tags ?? [],
+      };
+
+      await storage.saveLibraryItem(newItem);
+      res.status(201).json(newItem);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to save library item" });
+    }
+  });
+
+  app.put("/api/library/:id", async (req, res) => {
+    try {
+      const adminPin = getAdminPin();
+      const { pin, ...updates } = req.body;
+
+      if (!adminPin) return res.status(500).json({ message: "Admin PIN not configured" });
+      if (pin !== adminPin) return res.status(401).json({ message: "Invalid PIN" });
+
+      const updated = await storage.updateLibraryItem(req.params.id, updates);
+      if (!updated) return res.status(404).json({ message: "Library item not found" });
+      res.json(updated);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to update library item" });
+    }
+  });
+
+  app.delete("/api/library/:id", async (req, res) => {
+    try {
+      const adminPin = getAdminPin();
+      const pin = req.headers["x-admin-pin"] as string;
+
+      if (!adminPin) return res.status(500).json({ message: "Admin PIN not configured" });
+      if (pin !== adminPin) return res.status(401).json({ message: "Invalid PIN" });
+
+      const deleted = await storage.deleteLibraryItem(req.params.id);
+      if (!deleted) return res.status(404).json({ message: "Library item not found" });
+
+      if (deleted.source === "upload" && deleted.url) {
+        const filePath = path.resolve(process.cwd(), deleted.url.replace(/^\//, ""));
+        try {
+          await fs.unlink(filePath);
+        } catch {
+          // file may not exist, ignore
+        }
+      }
+
+      res.json({ message: "Deleted" });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to delete library item" });
+    }
+  });
+
+  app.post("/api/upload", upload.array("files", 20), async (req, res) => {
+    try {
+      const adminPin = getAdminPin();
+      const pin = req.headers["x-admin-pin"] as string;
+
+      if (!adminPin) return res.status(500).json({ message: "Admin PIN not configured" });
+      if (pin !== adminPin) return res.status(401).json({ message: "Invalid PIN" });
+
+      const files = req.files as Express.Multer.File[];
+      if (!files || files.length === 0) {
+        return res.status(400).json({ message: "No files uploaded" });
+      }
+
+      const results = files.map((file) => ({
+        url: `/uploads/${file.filename}`,
+        fileType: inferFileType(file.mimetype, file.originalname),
+        originalName: file.originalname,
+        filename: file.filename,
+      }));
+
+      res.json(results);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Upload failed" });
     }
   });
 

@@ -47,3 +47,22 @@ export type News = z.infer<typeof newsSchema>;
 export type Category = z.infer<typeof categorySchema>;
 export type Item = z.infer<typeof itemSchema>;
 export type AppData = z.infer<typeof appDataSchema>;
+
+export const libraryItemSchema = z.object({
+  id: z.string(),
+  bucket: z.enum(["SOP", "Protocols", "Others"]),
+  title: z.string(),
+  fileType: z.enum(["pdf", "docx", "xlsx", "pptx", "google", "link"]),
+  source: z.enum(["upload", "url"]),
+  url: z.string(),
+  version: z.string().optional(),
+  lastUpdated: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  tags: z.array(z.string()),
+  summary: z.string().optional(),
+});
+
+export const insertLibraryItemSchema = libraryItemSchema.omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertLibraryItem = z.infer<typeof insertLibraryItemSchema>;
+export type LibraryItem = z.infer<typeof libraryItemSchema>;
