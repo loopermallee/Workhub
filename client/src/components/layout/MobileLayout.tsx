@@ -1,10 +1,16 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { Bell, Home, FileText, Sun, CloudSun, Sunset, Moon, LogOut } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { Bell, Home, FileText, Sun, CloudSun, Sunset, Moon, LogOut, X, Pin, BookOpen, ExternalLink, CheckCheck } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { AnimatePresence, motion } from "framer-motion";
 import { getRecentUpdatesCount, useAppData } from "@/hooks/use-app-data";
 import { isAdminMode, clearAdminMode } from "@/lib/adminMode";
-import { getUnreadNewsCount, getUnreadLibraryCount } from "@/lib/readTracking";
+import {
+  getUnreadNewsCount, getUnreadLibraryCount,
+  getUnreadNewsItems, getUnreadLibraryItems,
+  markNewsRead, markLibraryRead,
+  markAllNewsRead, markAllLibraryRead,
+} from "@/lib/readTracking";
 import type { NewsItem, LibraryItem } from "@shared/schema";
 
 interface MobileLayoutProps {
@@ -19,13 +25,10 @@ interface GreetingInfo {
 function getSingaporeHolidayGreeting(now: Date): string | null {
   const month = now.getMonth() + 1;
   const day = now.getDate();
-
   const isNear = (m: number, d: number) => {
     const target = new Date(now.getFullYear(), m - 1, d);
-    const diff = Math.abs(now.getTime() - target.getTime()) / 86400000;
-    return diff <= 3;
+    return Math.abs(now.getTime() - target.getTime()) / 86400000 <= 3;
   };
-
   if (isNear(1, 1)) return "Happy New Year!";
   if (isNear(2, 10) || isNear(2, 11)) return "Happy Chinese New Year!";
   if (isNear(4, 18)) return "Happy Good Friday!";
@@ -33,29 +36,33 @@ function getSingaporeHolidayGreeting(now: Date): string | null {
   if (isNear(8, 9)) return "Happy National Day!";
   if (isNear(10, 20) || isNear(10, 31)) return "Happy Deepavali!";
   if (isNear(12, 25)) return "Merry Christmas!";
-
   if ((month === 3 || month === 4) && day <= 15) return "Ramadan Mubarak!";
-
   return null;
 }
 
 function getGreeting(): GreetingInfo {
   const now = new Date();
   const hour = now.getHours();
-
   const holiday = getSingaporeHolidayGreeting(now);
-  if (holiday) {
-    return { text: holiday, icon: <Sun className="w-3.5 h-3.5" /> };
-  }
+  if (holiday) return { text: holiday, icon: <Sun className="w-3.5 h-3.5" /> };
+  if (hour >= 5 && hour < 12) return { text: "Good morning", icon: <Sun className="w-3.5 h-3.5" /> };
+  if (hour >= 12 && hour < 17) return { text: "Good afternoon", icon: <CloudSun className="w-3.5 h-3.5" /> };
+  if (hour >= 17 && hour < 21) return { text: "Good evening", icon: <Sunset className="w-3.5 h-3.5" /> };
+  return { text: "Good night", icon: <Moon className="w-3.5 h-3.5" /> };
+}
 
-  if (hour >= 5 && hour < 12) {
-    return { text: "Good morning", icon: <Sun className="w-3.5 h-3.5" /> };
-  } else if (hour >= 12 && hour < 17) {
-    return { text: "Good afternoon", icon: <CloudSun className="w-3.5 h-3.5" /> };
-  } else if (hour >= 17 && hour < 21) {
-    return { text: "Good evening", icon: <Sunset className="w-3.5 h-3.5" /> };
-  } else {
-    return { text: "Good night", icon: <Moon className="w-3.5 h-3.5" /> };
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString("en-SG", { day: "numeric", month: "short", year: "numeric" });
+}
+
+function fileTypeLabel(fileType: string): string {
+  switch (fileType) {
+    case "pdf": return "PDF";
+    case "docx": return "Word";
+    case "xlsx": return "Excel";
+    case "pptx": return "Slides";
+    case "google": return "Google";
+    default: return "Link";
   }
 }
 
@@ -67,6 +74,9 @@ interface NewsResponse {
 export function MobileLayout({ children }: MobileLayoutProps) {
   const [location, setLocation] = useLocation();
   const [adminActive, setAdminActive] = useState(isAdminMode());
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [, forceUpdate] = useState(0);
+  const queryClient = useQueryClient();
 
   const { data } = useAppData();
   const totalRecentUpdates = getRecentUpdatesCount(data?.items);
@@ -82,15 +92,21 @@ export function MobileLayout({ children }: MobileLayoutProps) {
     staleTime: 30000,
   });
 
-  const unreadNews = getUnreadNewsCount(newsData?.active ?? []);
-  const unreadLibrary = getUnreadLibraryCount(libraryData ?? []);
+  const activeNews = newsData?.active ?? [];
+  const allLibrary = libraryData ?? [];
+
+  const unreadNews = getUnreadNewsCount(activeNews);
+  const unreadLibrary = getUnreadLibraryCount(allLibrary);
   const totalUnread = unreadNews + unreadLibrary;
+
+  const unreadNewsItems = getUnreadNewsItems(activeNews);
+  const unreadLibraryItems = getUnreadLibraryItems(allLibrary);
 
   const isHome = location === "/";
   const isLibrary = location.startsWith("/library");
 
-  const handleHomeClick = () => setLocation("/");
-  const handleProtocolsClick = () => setLocation("/library");
+  const handleHomeClick = () => { setShowNotifications(false); setLocation("/"); };
+  const handleProtocolsClick = () => { setShowNotifications(false); setLocation("/library"); };
 
   const handleExitAdmin = () => {
     clearAdminMode();
@@ -98,16 +114,49 @@ export function MobileLayout({ children }: MobileLayoutProps) {
     setLocation("/");
   };
 
+  const handleMarkAllRead = () => {
+    markAllNewsRead(activeNews);
+    markAllLibraryRead(allLibrary);
+    queryClient.invalidateQueries({ queryKey: ["/api/news"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/library"] });
+    forceUpdate((n) => n + 1);
+    setShowNotifications(false);
+  };
+
+  const handleNewsItemClick = (item: NewsItem) => {
+    markNewsRead(item.id);
+    forceUpdate((n) => n + 1);
+    setShowNotifications(false);
+    setLocation("/news");
+  };
+
+  const handleLibraryItemClick = (item: LibraryItem) => {
+    markLibraryRead(item.id);
+    forceUpdate((n) => n + 1);
+    setShowNotifications(false);
+    if (item.fileType === "pdf" && item.source === "upload") {
+      setLocation(`/viewer/${item.id}`);
+    } else {
+      window.open(item.url, "_blank", "noopener,noreferrer");
+    }
+  };
+
   useEffect(() => {
     setAdminActive(isAdminMode());
   }, [location]);
+
+  useEffect(() => {
+    if (showNotifications) {
+      forceUpdate((n) => n + 1);
+    }
+  }, [showNotifications]);
 
   return (
     <div className="flex flex-col h-[100dvh] w-full max-w-md mx-auto bg-background overflow-hidden relative shadow-2xl sm:border-x sm:border-border">
 
       {/* Top Header */}
       <header
-        className={`flex-shrink-0 pt-safe bg-background z-10 border-b border-border/50 ${adminActive ? "rainbow-border-bottom" : ""}`}
+        className={`flex-shrink-0 pt-safe bg-background z-20 border-b border-border/50 ${adminActive ? "rainbow-border-bottom" : ""}`}
       >
         <div className="flex items-center justify-between px-5 h-[60px]">
           <div className="flex flex-col justify-center">
@@ -133,6 +182,8 @@ export function MobileLayout({ children }: MobileLayoutProps) {
               </button>
             )}
             <button
+              data-testid="button-bell"
+              onClick={() => setShowNotifications((v) => !v)}
               className="relative p-2 -mr-2 rounded-full text-muted-foreground hover:bg-secondary hover:text-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20"
               aria-label="Notifications"
             >
@@ -151,6 +202,153 @@ export function MobileLayout({ children }: MobileLayoutProps) {
           </div>
         </div>
       </header>
+
+      {/* Notification Panel + Backdrop */}
+      <AnimatePresence>
+        {showNotifications && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              key="notif-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              onClick={() => setShowNotifications(false)}
+              className="absolute inset-0 z-10 bg-black/30"
+              style={{ top: 60 }}
+            />
+
+            {/* Panel */}
+            <motion.div
+              key="notif-panel"
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2, ease: [0.04, 0.62, 0.23, 0.98] }}
+              className="absolute left-0 right-0 z-20 bg-background border-b border-border shadow-xl"
+              style={{ top: 60 }}
+            >
+              {/* Panel header */}
+              <div className="flex items-center justify-between px-4 py-3 border-b border-border/60">
+                <span className="text-sm font-semibold font-display text-primary">
+                  Notifications
+                  {totalUnread > 0 && (
+                    <span className="ml-2 text-[11px] font-medium text-muted-foreground">
+                      {totalUnread} unread
+                    </span>
+                  )}
+                </span>
+                <div className="flex items-center gap-2">
+                  {totalUnread > 0 && (
+                    <button
+                      data-testid="button-mark-all-read"
+                      onClick={handleMarkAllRead}
+                      className="flex items-center gap-1 text-[11px] font-medium text-primary/70 hover:text-primary transition-colors"
+                    >
+                      <CheckCheck className="w-3.5 h-3.5" />
+                      Mark all read
+                    </button>
+                  )}
+                  <button
+                    data-testid="button-close-notifications"
+                    onClick={() => setShowNotifications(false)}
+                    className="p-1 rounded-full text-muted-foreground hover:bg-secondary hover:text-primary transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Scrollable content */}
+              <div className="max-h-[55dvh] overflow-y-auto no-scrollbar">
+                {totalUnread === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-10 text-muted-foreground/50">
+                    <Bell className="w-8 h-8 mb-2" strokeWidth={1.5} />
+                    <p className="text-sm">All caught up</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Unread news */}
+                    {unreadNewsItems.length > 0 && (
+                      <div>
+                        <p className="px-4 pt-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+                          News
+                        </p>
+                        {unreadNewsItems.map((item) => (
+                          <button
+                            key={item.id}
+                            data-testid={`notif-news-${item.id}`}
+                            onClick={() => handleNewsItemClick(item)}
+                            className="w-full flex items-start gap-3 px-4 py-3 hover:bg-secondary/60 active:bg-secondary transition-colors text-left border-t border-border/30 first:border-0"
+                          >
+                            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                              <Bell className="w-3.5 h-3.5 text-primary" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between gap-2">
+                                <p className="text-sm font-medium text-primary leading-snug line-clamp-2">
+                                  {item.title}
+                                </p>
+                                {item.pinned && <Pin className="w-3 h-3 text-muted-foreground/50 flex-shrink-0 mt-0.5" />}
+                              </div>
+                              {item.body && (
+                                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{item.body}</p>
+                              )}
+                              <p className="text-[11px] text-muted-foreground/50 mt-0.5">{formatDate(item.createdAt)}</p>
+                            </div>
+                            <span className="w-2 h-2 rounded-full bg-destructive flex-shrink-0 mt-2" />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Unread library */}
+                    {unreadLibraryItems.length > 0 && (
+                      <div>
+                        <p className="px-4 pt-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+                          Library
+                        </p>
+                        {unreadLibraryItems.map((item) => (
+                          <button
+                            key={item.id}
+                            data-testid={`notif-library-${item.id}`}
+                            onClick={() => handleLibraryItemClick(item)}
+                            className="w-full flex items-start gap-3 px-4 py-3 hover:bg-secondary/60 active:bg-secondary transition-colors text-left border-t border-border/30 first:border-0"
+                          >
+                            <div className="w-8 h-8 rounded-full bg-blue-500/10 dark:bg-blue-400/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                              <BookOpen className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between gap-2">
+                                <p className="text-sm font-medium text-primary leading-snug line-clamp-2">
+                                  {item.title}
+                                </p>
+                                <div className="flex items-center gap-1 flex-shrink-0">
+                                  <span className="text-[10px] font-semibold px-1.5 py-0.5 bg-secondary rounded-md text-muted-foreground uppercase">
+                                    {fileTypeLabel(item.fileType)}
+                                  </span>
+                                  {(item.fileType !== "pdf" || item.source !== "upload") && (
+                                    <ExternalLink className="w-3 h-3 text-muted-foreground/50" />
+                                  )}
+                                </div>
+                              </div>
+                              <p className="text-[11px] text-muted-foreground/60 mt-0.5">
+                                {item.bucket}{item.version ? ` · ${item.version}` : ""}
+                              </p>
+                            </div>
+                            <span className="w-2 h-2 rounded-full bg-destructive flex-shrink-0 mt-2" />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Main Content Area */}
       <main className="flex-1 overflow-y-auto no-scrollbar relative bg-background">

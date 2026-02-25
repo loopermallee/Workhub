@@ -1,5 +1,53 @@
 [
   {
+    "bucket": "Protocols",
+    "title": "CPG-0302-A Bradycardia",
+    "fileType": "pdf",
+    "source": "upload",
+    "url": "/uploads/1772043406198-CPG-0302-A_Bradycardia.pdf",
+    "lastUpdated": "2026-02-25",
+    "tags": [],
+    "id": "lib-1772043407253-cpnn1",
+    "createdAt": "2026-02-25T18:16:47.253Z",
+    "updatedAt": "2026-02-25T18:16:47.253Z"
+  },
+  {
+    "bucket": "Protocols",
+    "title": "CPG-0303-A Congestive Cardiac Failure",
+    "fileType": "pdf",
+    "source": "upload",
+    "url": "/uploads/1772043405865-CPG-0303-A_Congestive_Cardiac_Failure.pdf",
+    "lastUpdated": "2026-02-25",
+    "tags": [],
+    "id": "lib-1772043407074-rid7o",
+    "createdAt": "2026-02-25T18:16:47.074Z",
+    "updatedAt": "2026-02-25T18:16:47.074Z"
+  },
+  {
+    "bucket": "Protocols",
+    "title": "CPG-0301-A Acute Coronary Syndromes",
+    "fileType": "pdf",
+    "source": "upload",
+    "url": "/uploads/1772043405191-CPG-0301-A_Acute_Coronary_Syndromes.pdf",
+    "lastUpdated": "2026-02-25",
+    "tags": [],
+    "id": "lib-1772043406387-yw7l9",
+    "createdAt": "2026-02-25T18:16:46.387Z",
+    "updatedAt": "2026-02-25T18:16:46.387Z"
+  },
+  {
+    "bucket": "Protocols",
+    "title": "CPG-0101 Treat and Discharge (Medical) as of 1 Dec 2022",
+    "fileType": "pdf",
+    "source": "upload",
+    "url": "/uploads/1772043350938-CPG-0101_Treat_and_Discharge__Medical__as_of_1_Dec_2022.pdf",
+    "lastUpdated": "2026-02-25",
+    "tags": [],
+    "id": "lib-1772043351620-3on3v",
+    "createdAt": "2026-02-25T18:15:51.620Z",
+    "updatedAt": "2026-02-25T18:15:51.620Z"
+  },
+  {
     "id": "seed-001",
     "bucket": "SOP",
     "title": "SCDF Standard Operating Procedures — Fire Response",
@@ -10,7 +58,11 @@
     "lastUpdated": "2025-01-15",
     "createdAt": "2025-01-15T08:00:00.000Z",
     "updatedAt": "2025-01-15T08:00:00.000Z",
-    "tags": ["fire", "response", "SOP"],
+    "tags": [
+      "fire",
+      "response",
+      "SOP"
+    ],
     "summary": "Standard procedures for fire emergency response including crew deployment and equipment checklist."
   },
   {
@@ -24,7 +76,11 @@
     "lastUpdated": "2024-11-20",
     "createdAt": "2024-11-20T08:00:00.000Z",
     "updatedAt": "2024-11-20T08:00:00.000Z",
-    "tags": ["MCI", "triage", "mass casualty"],
+    "tags": [
+      "MCI",
+      "triage",
+      "mass casualty"
+    ],
     "summary": "Protocols for managing mass casualty incidents, including triage categories and resource allocation."
   },
   {
@@ -38,7 +94,10 @@
     "lastUpdated": "2025-02-01",
     "createdAt": "2025-02-01T08:00:00.000Z",
     "updatedAt": "2025-02-01T08:00:00.000Z",
-    "tags": ["contacts", "directory"],
+    "tags": [
+      "contacts",
+      "directory"
+    ],
     "summary": "Contact list for all Station 44 personnel and key external agencies."
   }
 ]

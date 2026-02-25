@@ -55,3 +55,25 @@ export function getUnreadLibraryCountForBucket(items: LibraryItem[], bucket: str
   const read = getReadSet(LIBRARY_KEY);
   return items.filter((i) => i.bucket === bucket && !read.has(i.id)).length;
 }
+
+export function getUnreadNewsItems(items: NewsItem[]): NewsItem[] {
+  const read = getReadSet(NEWS_KEY);
+  return items.filter((i) => !read.has(i.id));
+}
+
+export function getUnreadLibraryItems(items: LibraryItem[]): LibraryItem[] {
+  const read = getReadSet(LIBRARY_KEY);
+  return items.filter((i) => !read.has(i.id));
+}
+
+export function markAllNewsRead(items: NewsItem[]): void {
+  const set = getReadSet(NEWS_KEY);
+  items.forEach((i) => set.add(i.id));
+  saveReadSet(NEWS_KEY, set);
+}
+
+export function markAllLibraryRead(items: LibraryItem[]): void {
+  const set = getReadSet(LIBRARY_KEY);
+  items.forEach((i) => set.add(i.id));
+  saveReadSet(LIBRARY_KEY, set);
+}
