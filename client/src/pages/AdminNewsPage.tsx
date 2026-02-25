@@ -4,7 +4,7 @@ import { useLocation } from "wouter";
 import { ArrowLeft, Clock, Trash2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { MobileLayout } from "@/components/layout/MobileLayout";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -63,6 +63,7 @@ function PinModal({ onSuccess }: { onSuccess: (pin: string) => void }) {
     <Dialog open>
       <DialogContent className="max-w-xs mx-auto rounded-xl p-6" onInteractOutside={(e) => e.preventDefault()}>
         <DialogTitle className="text-base font-semibold text-center">Admin Access</DialogTitle>
+        <DialogDescription className="sr-only">Enter your admin PIN to access the news admin panel.</DialogDescription>
         <motion.div
           animate={shake ? { x: [-8, 8, -8, 8, 0] } : { x: 0 }}
           transition={{ duration: 0.4 }}

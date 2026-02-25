@@ -4,7 +4,7 @@ import { useLocation } from "wouter";
 import { AlertCircle, ChevronDown, ChevronUp, ArrowRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "wouter";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import type { NewsItem } from "@shared/schema";
@@ -196,6 +196,7 @@ export function ImportantNewsCard() {
       <Dialog open={showPinModal} onOpenChange={(open) => { setShowPinModal(open); setPin(""); setPinError(""); }}>
         <DialogContent className="max-w-xs mx-auto rounded-xl p-6">
           <DialogTitle className="text-base font-semibold text-center">Enter PIN</DialogTitle>
+          <DialogDescription className="sr-only">Enter your admin PIN to access admin features.</DialogDescription>
           <motion.div
             animate={shake ? { x: [-8, 8, -8, 8, 0] } : { x: 0 }}
             transition={{ duration: 0.4 }}
