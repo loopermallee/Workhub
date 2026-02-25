@@ -1,0 +1,152 @@
+You are building on top of my existing Replit mobile-first React webapp (“Station 44 Hub / HQ Resources” baseline). Implement a “Protocols / SOP Library” feature with mixed file types (PDF, docx, xlsx, pptx, Google Docs/Sheets/Slides, and general URLs). 
+
+Constraints:
+- No authentication for MVP (convenience-first).
+- Files are stored in Google Drive (source of truth). The app stores metadata + links only.
+- Use Replit Database ONLY for metadata (do NOT store files in DB).
+- Mobile-first, clean UI, not cluttered. Follow existing style tokens.
+
+## 1) Enable bottom nav “Protocols/SOP”
+Currently it is greyed out/disabled. Make it clickable and route to a new page: /library
+
+Bottom nav items:
+- Home (existing)
+- Protocols/SOP (new, active when on /library)
+
+## 2) Information Architecture
+On /library, show 3 top-level “folders” (cards):
+1) SOP
+2) Protocols
+3) Others
+
+Tapping a folder opens /library/:bucket where :bucket is one of:
+- sop
+- protocols
+- others
+
+Each bucket page shows:
+- Search bar (search title, tags, summary, version, lastUpdated; optional future searchText)
+- A filter row (chips) for file types (All, PDF, DOCX, XLSX, PPTX, Google, Link)
+- A list of items (sorted by lastUpdated desc)
+
+## 3) Library Item Metadata Model (Replit DB)
+Each library item must have:
+- id (string)
+- bucket ("SOP" | "Protocols" | "Others")
+- title (string)
+- fileType ("pdf" | "docx" | "xlsx" | "pptx" | "google" | "link")
+- url (string)  // Google Drive share link or direct URL
+- version (string) // e.g. "v1.2" or "Last Updated: Jul 2022"
+- lastUpdated (ISO date string)
+- tags (string array)
+- summary (string)
+- searchText (string, optional for future; leave empty in MVP)
+
+DB keys:
+- library:index => array of ids
+- library:<id> => JSON item
+
+Create seed data in code if DB is empty:
+- include at least 2 sample items per bucket
+- show varied file types
+- provide placeholders that I can edit later in Admin UI
+
+## 4) View / Open Behavior by File Type
+When user taps an item:
+- If fileType == "pdf":
+  - open an in-app PDF viewer route: /viewer/:id
+  - viewer uses PDF.js to render the PDF and supports highlighting a query term (q)
+  - If user arrived from a search with a query, pass it to viewer as ?q=<term>
+  - Viewer should auto-find and highlight matches and jump to first match (best effort)
+- If fileType in ("docx","xlsx","pptx","google","link"):
+  - open url in a new tab (or same tab with external viewer) using window.open(url, "_blank")
+  - show a subtle label “Opens in Drive/Browser” on the item row
+
+Important: For MVP, do not attempt in-app reading for Office/Google docs—only PDFs in-app.
+
+## 5) Search Requirements
+Search bar on bucket page must search across:
+- title
+- tags
+- summary
+- version
+- lastUpdated (as formatted text)
+Do simple case-insensitive search; results update live as user types.
+
+(Do NOT implement full PDF text indexing in MVP.)
+
+## 6) UI Requirements for List Rows
+Each row shows:
+- Title (bold)
+- Version (small badge)
+- Last updated (secondary text)
+- Tags (compact chips, max 3 visible + “+N”)
+- File type icon (pdf/docx/xlsx/pptx/google/link)
+Tap row opens per rules above.
+
+## 7) Admin Management (Simple, Non-technical)
+Add a hidden admin entry using the same mechanism as your News system (or implement now if not present):
+- Secret gesture: tap the /library page header 7 times within 4 seconds => show PIN modal
+- PIN stored in Replit Secrets: REPLIT_LIBRARY_ADMIN_PIN
+- Correct PIN opens /admin/library
+
+Admin page /admin/library:
+- Form to create a library item:
+  - bucket dropdown (SOP/Protocols/Others)
+  - title
+  - fileType dropdown
+  - url
+  - version
+  - lastUpdated (date picker)
+  - tags (comma-separated input -> array)
+  - summary
+- Submit saves to Replit DB and updates index.
+- Admin list view shows existing items with edit + delete.
+- Edit allows modifying all fields.
+- Delete removes from DB and index.
+
+## 8) PDF Viewer Implementation
+Implement /viewer/:id:
+- Fetch item metadata from DB by id, confirm fileType == "pdf"
+- Render using PDF.js in a mobile-friendly viewer:
+  - page navigation
+  - zoom controls (simple +/-)
+  - search highlight:
+    - if query param q exists, run find in PDF.js and highlight matches
+- Provide a “Open in Drive” link as fallback.
+
+## 9) Design Consistency
+Keep visual style consistent with existing app:
+- Clean, minimal, mobile-first
+- Use same typography and spacing tokens already in the project
+- Avoid clutter; prioritize fast scanning
+
+## 10) Deliverables
+- New pages:
+  - /library
+  - /library/:bucket
+  - /viewer/:id
+  - /admin/library
+- Components:
+  - LibraryFolderCard
+  - LibrarySearchBar
+  - LibraryItemRow
+  - FileTypeIcon
+  - PinModal (reuse if exists)
+- Server/API routes as needed for CRUD with Replit DB:
+  - GET /api/library
+  - GET /api/library/:id
+  - POST /api/library (PIN protected)
+  - PUT /api/library/:id (PIN protected)
+  - DELETE /api/library/:id (PIN protected)
+
+## Acceptance Criteria
+- Protocols/SOP tab opens /library
+- Buckets SOP/Protocols/Others show correct lists
+- Search works instantly
+- PDF opens in-app viewer with highlight best effort when launched from search
+- Non-PDF opens external link
+- Admin can add/edit/delete items via PIN gate
+- All data persists via Replit DB
+
+Implement this now within the existing codebase.

@@ -1,0 +1,236 @@
+You are extending my existing mobile-first React webapp called “Station 44 Hub”.
+
+This is an internal operational hub.
+MVP constraints:
+- No user authentication.
+- Admin mode via secret gesture + PIN.
+- Use Replit Database for metadata storage.
+- Store uploaded files locally in /uploads for MVP.
+- Mobile-first, clean UI, not cluttered.
+- Fast interaction, usable within 5 seconds.
+
+========================================
+1) ADMIN MODE (GLOBAL)
+========================================
+
+Admin Mode Entry:
+- User must tap the Important News card (or main header if cleaner) 6 times within 4 seconds.
+- If 6 taps detected within 4 seconds → show PIN modal.
+- If timer expires → reset counter.
+
+PIN:
+- Use one secret: REPLIT_ADMIN_PIN (Replit Secrets).
+- If correct → activate Admin Mode.
+- If wrong → show error + reset.
+
+Admin Mode Visual Indicator:
+- When active:
+  - Add thin 2px rainbow gradient border around:
+    - App header
+    - Important News card
+  - Keep subtle and clean.
+- Persist adminMode in localStorage.
+- Add “Exit Admin” button in admin pages to clear localStorage.
+
+========================================
+2) PROTOCOLS / SOP LIBRARY
+========================================
+
+Enable bottom nav “Protocols/SOP”.
+Route: /library
+
+Top level buckets:
+- SOP
+- Protocols
+- Others
+
+Route structure:
+- /library
+- /library/:bucket
+- /viewer/:id
+- /admin/library
+
+========================================
+3) LIBRARY DATA MODEL (Replit DB)
+========================================
+
+Each item:
+- id
+- bucket ("SOP" | "Protocols" | "Others")
+- title
+- fileType ("pdf","docx","xlsx","pptx","google","link")
+- source ("upload" | "url")
+- url
+- version
+- lastUpdated (ISO)
+- createdAt (ISO)
+- updatedAt (ISO)
+- tags (array)
+- summary
+- searchText (optional, leave empty for MVP)
+
+DB keys:
+- library:index (array of ids)
+- library:<id>
+
+Seed data if DB empty.
+
+========================================
+4) ADMIN LIBRARY MANAGEMENT
+========================================
+
+Route: /admin/library (Admin Mode required)
+
+Form fields:
+- bucket dropdown
+- title
+- fileType dropdown
+- Upload File OR External URL toggle
+- version
+- lastUpdated (date picker)
+- tags (comma-separated → array)
+- summary
+
+If Upload File:
+- POST to /api/upload (PIN required)
+- Use multer
+- Save file to /uploads
+- Return url + fileType
+- Store source="upload"
+
+If URL:
+- Save url directly
+- source="url"
+
+Editing:
+- Allow updating metadata
+- Allow replacing file
+- Delete:
+  - Remove DB entry
+  - Remove uploaded file if source="upload"
+
+Serve /uploads statically.
+
+========================================
+5) VIEWING BEHAVIOR
+========================================
+
+PDF:
+- Open in-app viewer using PDF.js
+- Route: /viewer/:id
+- Support query param q=searchTerm
+- Auto-highlight matches and jump to first
+
+Non-PDF:
+- Open external link in new tab
+- Show subtle label “Opens in browser”
+
+========================================
+6) SEARCH (Library)
+========================================
+
+Search across:
+- title
+- tags
+- summary
+- version
+- lastUpdated
+
+Case-insensitive.
+Live filtering.
+
+(Do NOT implement full PDF text indexing yet.)
+
+========================================
+7) IMPORTANT NEWS SYSTEM
+========================================
+
+News stored in Replit DB.
+
+Each news item:
+- id
+- title
+- body
+- createdAt
+- expiresAt
+
+Endpoints:
+- GET /api/news
+- POST /api/news (PIN required)
+
+Important News card:
+- Collapsible
+- Collapsed: show latest 1–2 active items
+- Expanded: show all active
+- Link to /news page
+
+/news page:
+- Active section
+- Past (Expired) section
+- Expired items muted with label
+- “Mark as read” per device (localStorage)
+
+========================================
+8) NOTIFICATIONS & BADGES
+========================================
+
+Global Bell Icon:
+- Shows total unread updates count.
+
+Unread logic (per device, localStorage):
+- news:read (array of ids)
+- library:read (array of ids)
+
+A Library item is “unread” if:
+- createdAt or updatedAt is newer than when user last viewed it
+- id not in localStorage read list
+
+Badges:
+- Important News card shows count of unread news.
+- Each main card (Roster, Ambulance Duty, Training, Administrative, Library buckets) shows unread count.
+- Global bell = total unread across all.
+
+Clearing logic:
+- When user opens a news item → mark as read.
+- When user opens a library item → mark as read.
+- Badges update instantly.
+- Persist via localStorage.
+
+========================================
+9) UI REQUIREMENTS
+========================================
+
+Mobile-first.
+Clean.
+Minimal clutter.
+Use existing style tokens.
+
+Rainbow border visible only when Admin Mode active.
+
+Cards:
+- Subtle elevation
+- Small badge circles
+- No heavy gradients
+
+========================================
+10) ACCEPTANCE CRITERIA
+========================================
+
+- 6 taps within 4s triggers PIN.
+- Correct PIN activates Admin Mode + rainbow border.
+- Library buckets work.
+- Admin can upload files.
+- PDFs open in-app.
+- Other files open externally.
+- News posts appear immediately.
+- Badges reflect unread items.
+- Badges clear when items are opened.
+- Admin mode persists until exited.
+- Works cleanly on mobile viewport.
+
+Implement all features in current codebase structure.
+Keep code modular and readable.
+Add README instructions for:
+- Setting REPLIT_ADMIN_PIN
+- Upload folder behavior
+- Admin access gesture.
