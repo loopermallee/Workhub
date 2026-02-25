@@ -1,0 +1,145 @@
+{
+  "news": [
+    {
+      "id": "n1",
+      "title": "Morning briefing",
+      "date": "2026-02-25",
+      "isNew": true,
+      "link": ""
+    }
+  ],
+  "categories": [
+    { "id": "roster", "title": "Roster" },
+    { "id": "ambulance", "title": "Ambulance Duty" },
+    { "id": "training", "title": "Training" },
+    { "id": "admin", "title": "Administrative" }
+  ],
+  "items": [
+    {
+      "id": "r1",
+      "categoryId": "roster",
+      "title": "Roster link",
+      "type": "link",
+      "url": "https://docs.google.com/spreadsheets/d/1kj-PHM0wrW_xLIPdHieo3ys9TSO2AO_TZUeaH6R-W1nw/edit?usp=drivesdk",
+      "tags": ["roster", "schedule"],
+      "lastUpdated": "2026-02-20"
+    },
+    {
+      "id": "r2",
+      "categoryId": "roster",
+      "title": "Leave Forecast link",
+      "type": "link",
+      "url": "https://docs.google.com/spreadsheets/d/120vXZyAdaoCgJc_2zSzZ0XchCrrLtnvLfXu-MHDWqK20/edit?usp=drivesdk",
+      "tags": ["leave", "forecast"],
+      "lastUpdated": "2026-02-20"
+    },
+    {
+      "id": "r3",
+      "categoryId": "roster",
+      "title": "Manning link",
+      "type": "link",
+      "url": "https://docs.google.com/spreadsheets/d/1-i10XR12IGN2X_I7ID62gkkwHSQeFn-JZpdf1JKLDymE/edit",
+      "tags": ["manning"],
+      "lastUpdated": "2026-02-20"
+    },
+    {
+      "id": "a1",
+      "categoryId": "ambulance",
+      "title": "Armoury list",
+      "type": "link",
+      "url": "https://armoury.gov.sg/lists",
+      "tags": ["armoury", "equipment"],
+      "lastUpdated": "2026-02-20"
+    },
+    {
+      "id": "a2",
+      "categoryId": "ambulance",
+      "title": "MCN drawing",
+      "type": "link",
+      "url": "https://form.gov.sg/667d2ee9a3667d3f7c9a16a5",
+      "tags": ["mcn", "drawing"],
+      "lastUpdated": "2026-02-20"
+    },
+    {
+      "id": "a3",
+      "categoryId": "ambulance",
+      "title": "Hazmat / BRV / BRH checklist",
+      "type": "link",
+      "url": "https://go.gov.sg/hazmat44",
+      "tags": ["hazmat", "brv", "brh", "checklist"],
+      "lastUpdated": "2026-02-20"
+    },
+    {
+      "id": "a4",
+      "categoryId": "ambulance",
+      "title": "Ambulance Offrun",
+      "type": "link",
+      "url": "https://form.gov.sg/66179e5bc4e9a0f205e9ec3e",
+      "tags": ["offrun", "ambulance"],
+      "lastUpdated": "2026-02-20"
+    },
+    {
+      "id": "a5",
+      "categoryId": "ambulance",
+      "title": "IFleet check",
+      "type": "link",
+      "url": "https://go.gov.sg/s44dailycameracheck",
+      "tags": ["ifleet", "check", "camera"],
+      "lastUpdated": "2026-02-20"
+    },
+    {
+      "id": "t1",
+      "categoryId": "training",
+      "title": "CET-CME schedule",
+      "type": "content",
+      "content": "CET-CME 2026:\nJanuary: 12th, 13th, 26th, 27th\nMay: 4th, 5th, 8th\nOctober: 1st, 2nd, 8th\nJanuary 2026 breakdown:\n1st div: 12th\n2nd div: 27th\n3rd div: 26th\n4th div: 13th",
+      "tags": ["cet", "cme", "schedule", "training"],
+      "lastUpdated": "2026-02-20"
+    },
+    {
+      "id": "t2",
+      "categoryId": "training",
+      "title": "Post night training link (PNT)",
+      "type": "link",
+      "url": "https://go.gov.sg/stn44pnt",
+      "tags": ["pnt", "training", "night"],
+      "lastUpdated": "2026-02-20"
+    },
+    {
+      "id": "t3",
+      "categoryId": "training",
+      "title": "Current month drills",
+      "type": "content",
+      "content": "Monthly drills placeholder content. Update this section with the latest drills.",
+      "tags": ["drills", "monthly"],
+      "lastUpdated": "2026-02-20"
+    },
+    {
+      "id": "ad1",
+      "categoryId": "admin",
+      "title": "Armoury onboarding link",
+      "type": "link",
+      "url": "https://armoury.gov.sg/onboard?inviteCode=team-clmhguv3a0001%7C30808qzwx13",
+      "tags": ["armoury", "onboarding"],
+      "lastUpdated": "2026-02-20"
+    },
+    {
+      "id": "ad2",
+      "categoryId": "admin",
+      "title": "Cardiac Arrest Report Template",
+      "type": "content",
+      "content": "Cardiac Arrest Report\nInc no: 2025xxxx/xxxx\nCallsign:\nPRM Name:\nTime of Call: xxxxHRS\nOHCA Type:\nE-Sub Status & Date: Not yet\n(To be completed in 3 days)",
+      "tags": ["cardiac", "arrest", "report", "template"],
+      "lastUpdated": "2026-02-20"
+    },
+    {
+      "id": "ad3",
+      "categoryId": "admin",
+      "title": "Offrun Template",
+      "type": "content",
+      "content": "Use this form to submit offrun. Ensure fields are completed before end of shift.\n\nLink: https://form.gov.sg/66179e5bc4e9a0f205e9ec3e",
+      "tags": ["offrun", "template", "form"],
+      "lastUpdated": "2026-02-20"
+    }
+  ]
+}
