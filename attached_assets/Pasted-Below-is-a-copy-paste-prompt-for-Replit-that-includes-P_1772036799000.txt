@@ -1,0 +1,218 @@
+Below is a copy-paste prompt for Replit that includes: PRD + features + IA (link categorization) + update system + collapsible news bar + bottom nav (Protocols/SOP greyed out) + your design guidelines + the soft “design professional” style from your attached reference image.
+
+⸻
+
+Replit build prompt (copy/paste)
+
+You are building a mobile-first internal web app called “Station 44 Hub”. 
+I am working from iOS only. Keep the setup simple, with minimal dependencies, and make it easy to extend.
+
+## 0) Product Requirements (PRD)
+Goal:
+- A fast internal hub for operational links and templates.
+- Convenience-first: no authentication for MVP.
+- No sensitive / patient data.
+- Users must find info within 5 seconds.
+- Key interactions: Search → open link/template immediately.
+
+Users:
+- Internal staff who have the app link.
+
+Core MVP Features:
+1) Home dashboard with:
+   - Collapsible notification/news bar (Important News) at top
+   - Search bar under it (search by title, tags, category)
+   - 4 category tiles/cards: Roster, Ambulance Duty, Training, Administrative
+   - Each tile shows its links in a short list
+   - Each tile has an “updates” badge (small numbered indicator in top-right) showing how many items were updated recently
+
+2) Bottom navigation:
+   - Home (active)
+   - Protocols / SOP (greyed out / disabled as “Coming Soon”)
+   - Tapping the disabled item should show a “Coming Soon” toast or small modal (not a navigation)
+
+3) Updates system:
+   - App should visually indicate “recently updated” items and total count
+   - There must be a global updates indicator icon/badge in the top-right (like a bell badge) that shows total recent updates
+   - “Recent” is defined as updated within last 14 days (make this a constant so I can change it)
+
+4) Data management:
+   - Use a single JSON data source in the repo for all items (links + templates + news)
+   - Make it easy for me to edit on phone:
+     - Editing one JSON file should update the app
+   - Provide categories, tags, and lastUpdated fields for each item
+
+5) Templates:
+   - Cardiac Arrest Report Template should be accessible inside the app as a copyable template (not just plain text hidden in code).
+   - Offrun Template should be accessible similarly (even if it just links to the offrun form, include a “template/instructions” entry too).
+   - These templates should be searchable.
+
+Non-goals for MVP:
+- No login/auth, no role-based access, no PDF full-text search for now (only metadata search).
+- No backend database for MVP.
+
+## 1) Information Architecture (Categories + Items)
+Build the 4 sections exactly like this:
+
+A) Roster
+1) Roster link
+   https://docs.google.com/spreadsheets/d/1kj-PHM0wrW_xLIPdHieo3ys9TSO2AO_TZUeaH6R-W1nw/edit?usp=drivesdk
+2) Leave Forecast link
+   https://docs.google.com/spreadsheets/d/120vXZyAdaoCgJc_2zSzZ0XchCrrLtnvLfXu-MHDWqK20/edit?usp=drivesdk
+3) Manning link
+   https://docs.google.com/spreadsheets/d/1-i10XR12IGN2X_I7ID62gkkwHSQeFn-JZpdf1JKLDymE/edit
+
+B) Ambulance Duty
+1) Armoury list
+   https://armoury.gov.sg/lists
+2) MCN drawing
+   https://form.gov.sg/667d2ee9a3667d3f7c9a16a5
+3) Hazmat / BRV / BRH checklist
+   https://go.gov.sg/hazmat44
+   https://go.gov.sg/armedadversary44
+4) Ambulance Offrun
+   https://form.gov.sg/66179e5bc4e9a0f205e9ec3e
+5) IFleet check
+   https://go.gov.sg/s44dailycameracheck
+
+C) Training
+1) CET-CME schedule (current year cumulative)
+   (store as a “content item” inside the app, not a link)
+   CET-CME 2026:
+   January: 12th, 13th, 26th, 27th
+   May: 4th, 5th, 8th
+   October: 1st, 2nd, 8th
+   January 2026 breakdown:
+   1st div: 12th
+   2nd div: 27th
+   3rd div: 26th
+   4th div: 13th
+2) Post night training link (PNT)
+   https://go.gov.sg/stn44pnt
+3) Current month drills
+   (create a placeholder “content item” that I can edit monthly in the JSON)
+
+D) Administrative
+1) Armoury onboarding link
+   https://armoury.gov.sg/onboard?inviteCode=team-clmhguv3a0001%7C30808qzwx13
+2) Cardiac Arrest Report Template (content item, searchable, copyable)
+   Use the exact template text below:
+   ---
+   Cardiac Arrest Report
+   Inc no: 2025xxxx/xxxx
+   Callsign:
+   PRM Name:
+   Time of Call: xxxxHRS
+   OHCA Type:
+   E-Sub Status & Date: Not yet
+   (To be completed in 3 days)
+3) Offrun Template (content item + link)
+   Link:
+   https://form.gov.sg/66179e5bc4e9a0f205e9ec3e
+   Content:
+   “Use this form to submit offrun. Ensure fields are completed before end of shift.”
+4) Morning briefing
+   (create a placeholder link or content item; show it in Important News by default)
+
+## 2) Search Requirements
+- Single search bar on Home page
+- Search across:
+  - title
+  - tags
+  - category name
+  - content (for content items like CET schedule, templates)
+- Results should display:
+  - title
+  - category
+  - a short snippet (for content items)
+  - open action:
+    - if link: open in new tab
+    - if content: open an in-app detail view
+
+## 3) Notification / Important News
+- A top notification bar that can collapse/expand
+- Default state: expanded showing 1–2 key messages
+- Expanded state shows:
+  - “Important News” label
+  - list of news items (from JSON)
+  - each news item has: title, date, optional link, and optional “new” label
+- Collapsed state: a slim bar with “Important News” and a chevron icon
+- Must not feel cluttered.
+
+## 4) Updates Badges
+- Each category card shows a small badge count = number of items with lastUpdated within last 14 days
+- A top-right global updates icon (bell) shows total recent updates
+- Recent update logic based on lastUpdated field in JSON
+
+## 5) Design Guidelines (must follow exactly)
+Colors:
+- Primary: #0D0C22
+- Accent: #FFFFFF
+- Background: #FFFFFF
+- Text Primary: #808080
+- Link: #060318
+
+Typography:
+- Heading font: Mona Sans
+- Body font: Arial (primary) with Helvetica Neue as alternative
+- h1: 24px
+- h2: 24px
+- body: 16px
+
+Spacing:
+- Base unit: 4px (use multiples: 4/8/12/16/20/24)
+- Border radius: 4px
+
+Personality:
+- Modern
+- Medium energy
+- Audience: design professionals
+- Keep it clean and not cluttered.
+
+Style reference:
+- Use the attached photo as style inspiration:
+  - soft, clean, “design professional” UI
+  - subtle elevation/shadows, airy spacing, rounded containers
+  - minimal iconography, restrained visual noise
+  - light background with calm depth (avoid heavy gradients)
+  - keep contrast accessible
+
+Specific UI:
+- Category cards: clean white surfaces with subtle shadow, thin dividers, icon on left, badge on top-right
+- Bottom nav:
+  - Home active (Primary color)
+  - Protocols/SOP greyed out with “Coming soon” treatment
+
+## 6) Deliverables / File Structure
+Create the following structure:
+- /public (icons if needed)
+- /src
+  - /data/appData.json   (single source of truth)
+  - /components (Card, Badge, NewsBar, SearchBar, BottomNav)
+  - /pages (Home, Detail)
+  - /styles (theme tokens: colors, spacing, typography)
+- Include clear comments/instructions in README:
+  - “To update links/news/templates, edit src/data/appData.json”
+  - “To change ‘recent update window’, edit RECENT_DAYS constant”
+
+## 7) Acceptance Criteria
+- Home loads fast and looks uncluttered on mobile width
+- Search works across all items and returns correct category
+- Clicking link items opens external URL
+- Clicking content items opens in-app detail view with copy button
+- News bar collapses/expands
+- Badge counts work (category + global)
+- Protocols/SOP is visible but disabled and shows Coming Soon on tap
+- Visual design matches the provided tokens and clean design reference style
+
+Now build the project in Replit with this structure, implement the UI, the JSON-driven data, and the required interactions.
+
+
+⸻
+
+What you do next (action, not theory)
+	1.	Create a new Replit → choose React (or “Vite + React” if available).
+	2.	Paste the prompt above into Replit AI.
+	3.	After it generates, your only editing job becomes updating src/data/appData.json.
+
+If Replit generates something off-brand (wrong colors/spacing), tell me and paste the generated theme or styles file here—I’ll rewrite it to match your tokens exactly.
