@@ -1,0 +1,111 @@
+Implement a “Daily News” system in this mobile-first React webapp.
+
+## Requirements Summary
+- Important News card is collapsible/expandable.
+- Users can view active announcements; expired announcements remain accessible but visually “outdated”.
+- Admin posting is a secret feature: tap the Important News card 7 times within 4 seconds → PIN modal appears. Correct PIN unlocks Admin page.
+- PIN is the same for everyone and stored in an environment variable (REPLIT_NEWS_ADMIN_PIN).
+- News fields: title, body, expiresAt (date/time). createdAt is auto-generated.
+- Past/expired news remains on a dedicated News page and appears muted with an “Expired” label.
+
+## Tech constraints
+- Must work fully in Replit.
+- Use Replit Database (key-value) for persistence.
+- No external services.
+- Keep it simple, readable, and easy to extend.
+- Mobile UX: clean, uncluttered, matches existing style tokens.
+
+## Data model
+Each news item:
+- id: string (e.g. Date.now().toString())
+- title: string
+- body: string
+- createdAt: ISO string
+- expiresAt: ISO string
+
+DB keys:
+- news:index => JSON array of ids (newest first)
+- news:<id> => JSON news item
+
+## API Endpoints
+Create minimal server endpoints:
+1) GET /api/news
+   - Returns { active: NewsItem[], expired: NewsItem[] }
+   - Sort newest first by createdAt
+   - active: now < expiresAt
+   - expired: now >= expiresAt
+
+2) POST /api/news
+   - Header or body must include admin PIN for auth
+   - Validate title not empty
+   - Validate expiresAt is a valid future datetime (allow same-day future)
+   - Save item, update index
+   - Return created item
+
+Optional:
+3) DELETE /api/news/:id (admin only)
+   - Not required unless easy
+
+## Frontend UI
+A) Important News card component
+- Collapsible/expandable.
+- Collapsed:
+  - Show “Important News” header + chevron icon
+  - Show latest 1–2 active items (title + date)
+  - If no active items: show “No current updates”
+- Expanded:
+  - Show list of active items (scroll area with max height)
+  - Provide “View all” link to /news
+- Must have a subtle icon indicating it can be tapped to expand/collapse.
+
+B) Secret Admin entry
+- Track taps on Important News card:
+  - If 7 taps within 4 seconds, open PIN modal.
+- PIN modal:
+  - Numeric input
+  - Submit button
+  - If PIN matches REPLIT_NEWS_ADMIN_PIN → route to /admin/news
+  - If wrong → shake/error message + reset.
+- Keep discreet: do NOT show “admin” hints unless triggered.
+
+C) News page (/news)
+- Show two sections:
+  1) Current (Active)
+  2) Past (Expired)
+- Expired items:
+  - Muted styling
+  - “Expired” label
+  - Still readable
+- Add a simple “read” UI indicator:
+  - Store read ids in localStorage (news:read)
+  - If user taps an item, mark read; show a “Read” style (lighter)
+  - This is per-device; no login.
+
+D) Admin page (/admin/news)
+- PIN is required (if user navigates directly, show PIN modal).
+- Form fields:
+  - Title (required)
+  - Body (optional multiline)
+  - Expiry datetime (required; use datetime-local input)
+- Publish button:
+  - Calls POST /api/news with PIN
+  - On success: show toast “Published” and clear form
+- Show list of existing news (active + expired) with timestamps for admin visibility.
+
+## File organization
+- src/components/ImportantNewsCard.jsx
+- src/pages/NewsPage.jsx
+- src/pages/AdminNewsPage.jsx
+- server routes for /api/news (depends on current setup; implement in existing server structure)
+- Use existing styling system; do not introduce clutter; keep UI modern, minimal.
+
+## Acceptance
+- I can post a news item in the admin page and it appears immediately in Important News card and /news page.
+- Important News card expands/collapses smoothly.
+- 7 taps triggers PIN prompt; normal users won’t notice.
+- Expired news is still visible but clearly marked outdated.
+- Works on iPhone viewport cleanly.
+
+Implement this now in the project. Add instructions in README:
+- How to set REPLIT_NEWS_ADMIN_PIN in Secrets
+- How to access admin via 7 taps
