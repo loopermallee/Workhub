@@ -3,8 +3,9 @@ import { useLocation } from "wouter";
 import { Bell, Home, FileText, Sun, CloudSun, Sunset, Moon, LogOut, X, Pin, BookOpen, ExternalLink, CheckCheck } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
-import { getRecentUpdatesCount, useAppData } from "@/hooks/use-app-data";
+import { useAppData } from "@/hooks/use-app-data";
 import { isAdminMode, clearAdminMode } from "@/lib/adminMode";
+import { useTheme } from "@/components/ThemeProvider";
 import {
   getUnreadNewsCount, getUnreadLibraryCount,
   getUnreadNewsItems, getUnreadLibraryItems,
@@ -15,11 +16,6 @@ import type { NewsItem, LibraryItem } from "@shared/schema";
 
 interface MobileLayoutProps {
   children: React.ReactNode;
-}
-
-interface GreetingInfo {
-  text: string;
-  icon: React.ReactNode;
 }
 
 function getSingaporeHolidayGreeting(now: Date): string | null {
@@ -40,15 +36,15 @@ function getSingaporeHolidayGreeting(now: Date): string | null {
   return null;
 }
 
-function getGreeting(): GreetingInfo {
+function getGreetingText(): string {
   const now = new Date();
-  const hour = now.getHours();
   const holiday = getSingaporeHolidayGreeting(now);
-  if (holiday) return { text: holiday, icon: <Sun className="w-3.5 h-3.5" /> };
-  if (hour >= 5 && hour < 12) return { text: "Good morning", icon: <Sun className="w-3.5 h-3.5" /> };
-  if (hour >= 12 && hour < 17) return { text: "Good afternoon", icon: <CloudSun className="w-3.5 h-3.5" /> };
-  if (hour >= 17 && hour < 21) return { text: "Good evening", icon: <Sunset className="w-3.5 h-3.5" /> };
-  return { text: "Good night", icon: <Moon className="w-3.5 h-3.5" /> };
+  if (holiday) return holiday;
+  const hour = now.getHours();
+  if (hour >= 5 && hour < 12) return "Good morning";
+  if (hour >= 12 && hour < 17) return "Good afternoon";
+  if (hour >= 17 && hour < 21) return "Good evening";
+  return "Good night";
 }
 
 function formatDate(iso: string) {
@@ -75,12 +71,14 @@ export function MobileLayout({ children }: MobileLayoutProps) {
   const [location, setLocation] = useLocation();
   const [adminActive, setAdminActive] = useState(isAdminMode());
   const [showNotifications, setShowNotifications] = useState(false);
+  const [animating, setAnimating] = useState(false);
+  const [animColor, setAnimColor] = useState<"white" | "black">("white");
   const [, forceUpdate] = useState(0);
   const queryClient = useQueryClient();
 
-  const { data } = useAppData();
-  const totalRecentUpdates = getRecentUpdatesCount(data?.items);
-  const greeting = getGreeting();
+  const { theme, toggleTheme } = useTheme();
+
+  useAppData();
 
   const { data: newsData } = useQuery<NewsResponse>({
     queryKey: ["/api/news"],
@@ -105,6 +103,8 @@ export function MobileLayout({ children }: MobileLayoutProps) {
   const isHome = location === "/";
   const isLibrary = location.startsWith("/library");
 
+  const greetingText = getGreetingText();
+
   const handleHomeClick = () => { setShowNotifications(false); setLocation("/"); };
   const handleProtocolsClick = () => { setShowNotifications(false); setLocation("/library"); };
 
@@ -112,6 +112,14 @@ export function MobileLayout({ children }: MobileLayoutProps) {
     clearAdminMode();
     setAdminActive(false);
     setLocation("/");
+  };
+
+  const handleThemeToggle = () => {
+    const next = theme === "light" ? "dark" : "light";
+    setAnimColor(next === "dark" ? "black" : "white");
+    setAnimating(true);
+    toggleTheme();
+    setTimeout(() => setAnimating(false), 600);
   };
 
   const handleMarkAllRead = () => {
@@ -151,8 +159,25 @@ export function MobileLayout({ children }: MobileLayoutProps) {
     }
   }, [showNotifications]);
 
+  const ThemeIcon = theme === "dark" ? Moon : (greetingText.startsWith("Good morning") ? Sun : greetingText.startsWith("Good afternoon") ? CloudSun : greetingText.startsWith("Good evening") ? Sunset : Moon);
+
   return (
     <div className="flex flex-col h-[100dvh] w-full max-w-md mx-auto bg-background overflow-hidden relative shadow-2xl sm:border-x sm:border-border">
+
+      {/* Full-screen theme transition overlay */}
+      <AnimatePresence>
+        {animating && (
+          <motion.div
+            key="theme-overlay"
+            initial={{ opacity: 0.75 }}
+            animate={{ opacity: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            className="absolute inset-0 z-50 pointer-events-none"
+            style={{ backgroundColor: animColor }}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Top Header */}
       <header
@@ -163,10 +188,15 @@ export function MobileLayout({ children }: MobileLayoutProps) {
             <h1 className="text-lg font-bold text-primary font-display tracking-tight leading-tight">
               Station 44 Hub
             </h1>
-            <div className="flex items-center gap-1 text-muted-foreground">
-              {greeting.icon}
-              <span className="text-[11px] font-medium">{greeting.text}</span>
-            </div>
+            <button
+              data-testid="button-theme-toggle"
+              onClick={handleThemeToggle}
+              title={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
+              className="flex items-center gap-1 text-muted-foreground hover:text-primary transition-colors focus:outline-none group -ml-0.5 w-fit"
+            >
+              <ThemeIcon className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
+              <span className="text-[11px] font-medium">{greetingText}</span>
+            </button>
           </div>
 
           <div className="flex items-center gap-1">
@@ -188,16 +218,14 @@ export function MobileLayout({ children }: MobileLayoutProps) {
               aria-label="Notifications"
             >
               <Bell className="w-5 h-5" strokeWidth={2.5} />
-              {totalUnread > 0 ? (
+              {totalUnread > 0 && (
                 <span
                   data-testid="badge-bell-count"
                   className="absolute top-0.5 right-0.5 min-w-[16px] h-[16px] flex items-center justify-center text-[9px] font-bold bg-destructive text-destructive-foreground rounded-full px-0.5 border border-background"
                 >
                   {totalUnread > 99 ? "99+" : totalUnread}
                 </span>
-              ) : totalRecentUpdates > 0 ? (
-                <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-destructive rounded-full border-2 border-background shadow-sm" />
-              ) : null}
+              )}
             </button>
           </div>
         </div>
@@ -207,7 +235,6 @@ export function MobileLayout({ children }: MobileLayoutProps) {
       <AnimatePresence>
         {showNotifications && (
           <>
-            {/* Backdrop */}
             <motion.div
               key="notif-backdrop"
               initial={{ opacity: 0 }}
@@ -219,7 +246,6 @@ export function MobileLayout({ children }: MobileLayoutProps) {
               style={{ top: 60 }}
             />
 
-            {/* Panel */}
             <motion.div
               key="notif-panel"
               initial={{ opacity: 0, y: -8 }}
@@ -229,7 +255,6 @@ export function MobileLayout({ children }: MobileLayoutProps) {
               className="absolute left-0 right-0 z-20 bg-background border-b border-border shadow-xl"
               style={{ top: 60 }}
             >
-              {/* Panel header */}
               <div className="flex items-center justify-between px-4 py-3 border-b border-border/60">
                 <span className="text-sm font-semibold font-display text-primary">
                   Notifications
@@ -260,7 +285,6 @@ export function MobileLayout({ children }: MobileLayoutProps) {
                 </div>
               </div>
 
-              {/* Scrollable content */}
               <div className="max-h-[55dvh] overflow-y-auto no-scrollbar">
                 {totalUnread === 0 ? (
                   <div className="flex flex-col items-center justify-center py-10 text-muted-foreground/50">
@@ -269,7 +293,6 @@ export function MobileLayout({ children }: MobileLayoutProps) {
                   </div>
                 ) : (
                   <>
-                    {/* Unread news */}
                     {unreadNewsItems.length > 0 && (
                       <div>
                         <p className="px-4 pt-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
@@ -303,7 +326,6 @@ export function MobileLayout({ children }: MobileLayoutProps) {
                       </div>
                     )}
 
-                    {/* Unread library */}
                     {unreadLibraryItems.length > 0 && (
                       <div>
                         <p className="px-4 pt-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">

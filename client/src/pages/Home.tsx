@@ -7,16 +7,17 @@ import { CategoryCard } from "@/components/CategoryCard";
 import { ItemCard } from "@/components/ItemCard";
 import { ContentDrawer } from "@/components/ContentDrawer";
 import { CategoryDrawer } from "@/components/CategoryDrawer";
-import { useAppData, searchItems, getCategoryUpdatesCount } from "@/hooks/use-app-data";
+import { useAppData, searchItems } from "@/hooks/use-app-data";
 import { getCategoryColor } from "@/lib/categoryColors";
+import { markCategoryOpened, getCategoryUnseenCount } from "@/lib/categoryTracking";
 import type { Category, Item } from "@shared/schema";
 
 export default function Home() {
   const { data, isLoading, isError } = useAppData();
   const [searchQuery, setSearchQuery] = useState("");
-
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
   const [selectedContentItem, setSelectedContentItem] = useState<Item | null>(null);
+  const [badgeTick, setBadgeTick] = useState(0);
 
   if (isLoading) {
     return (
@@ -51,6 +52,12 @@ export default function Home() {
     if (item.type === "content") {
       setSelectedContentItem(item);
     }
+  };
+
+  const handleCategoryClick = (category: Category) => {
+    markCategoryOpened(category.id, items);
+    setBadgeTick((t) => t + 1);
+    setSelectedCategory(category);
   };
 
   return (
@@ -95,10 +102,10 @@ export default function Home() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {categories.map((category) => (
                   <CategoryCard
-                    key={category.id}
+                    key={`${category.id}-${badgeTick}`}
                     category={category}
-                    updatesCount={getCategoryUpdatesCount(category.id, items)}
-                    onClick={() => setSelectedCategory(category)}
+                    updatesCount={getCategoryUnseenCount(category.id, items)}
+                    onClick={() => handleCategoryClick(category)}
                   />
                 ))}
               </div>
