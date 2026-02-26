@@ -1,6 +1,45 @@
 [
   {
     "bucket": "Protocols",
+    "title": "CPG-0102-P Pain Management (Paeds) as of 1 Dec 2022",
+    "fileType": "pdf",
+    "source": "upload",
+    "url": "/uploads/1772074950772-CPG-0102-P_Pain_Management__Paeds__as_of_1_Dec_2022.pdf",
+    "lastUpdated": "2026-02-26",
+    "tags": [],
+    "patientType": "paed",
+    "id": "lib-1772074951854-mizpa",
+    "createdAt": "2026-02-26T03:02:31.854Z",
+    "updatedAt": "2026-02-26T03:02:36.691Z"
+  },
+  {
+    "bucket": "Protocols",
+    "title": "CPG-0202-P ROSC (Paeds)",
+    "fileType": "pdf",
+    "source": "upload",
+    "url": "/uploads/1772074950609-CPG-0202-P_ROSC__Paeds_.pdf",
+    "lastUpdated": "2026-02-26",
+    "tags": [],
+    "patientType": "paed",
+    "id": "lib-1772074951163-vvf6v",
+    "createdAt": "2026-02-26T03:02:31.163Z",
+    "updatedAt": "2026-02-26T03:02:40.780Z"
+  },
+  {
+    "bucket": "Protocols",
+    "title": "CPG-0201-P Cardiac Arrest (Paeds)",
+    "fileType": "pdf",
+    "source": "upload",
+    "url": "/uploads/1772074949955-CPG-0201-P_Cardiac_Arrest__Paeds_.pdf",
+    "lastUpdated": "2026-02-26",
+    "tags": [],
+    "patientType": "paed",
+    "id": "lib-1772074950970-ei353",
+    "createdAt": "2026-02-26T03:02:30.970Z",
+    "updatedAt": "2026-02-26T03:02:30.970Z"
+  },
+  {
+    "bucket": "Protocols",
     "title": "CPG-0302-A Bradycardia",
     "fileType": "pdf",
     "source": "upload",
@@ -22,8 +61,8 @@
     "tags": [],
     "id": "lib-1772043407074-rid7o",
     "createdAt": "2026-02-25T18:16:47.074Z",
-    "updatedAt": "2026-02-26T00:59:21.382Z",
-    "patientType": "paed"
+    "updatedAt": "2026-02-26T03:01:40.235Z",
+    "patientType": "adult"
   },
   {
     "bucket": "Protocols",
@@ -35,7 +74,8 @@
     "tags": [],
     "id": "lib-1772043406387-yw7l9",
     "createdAt": "2026-02-25T18:16:46.387Z",
-    "updatedAt": "2026-02-25T18:16:46.387Z"
+    "updatedAt": "2026-02-26T03:01:45.044Z",
+    "patientType": "adult"
   },
   {
     "bucket": "Protocols",
@@ -47,7 +87,8 @@
     "tags": [],
     "id": "lib-1772043351620-3on3v",
     "createdAt": "2026-02-25T18:15:51.620Z",
-    "updatedAt": "2026-02-25T18:15:51.620Z"
+    "updatedAt": "2026-02-26T03:01:54.101Z",
+    "patientType": "adult"
   },
   {
     "id": "seed-001",
