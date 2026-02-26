@@ -9,7 +9,7 @@ import { ContentDrawer } from "@/components/ContentDrawer";
 import { CategoryDrawer } from "@/components/CategoryDrawer";
 import { useAppData, searchItems } from "@/hooks/use-app-data";
 import { getCategoryColor } from "@/lib/categoryColors";
-import { markCategoryOpened, getCategoryUnseenCount } from "@/lib/categoryTracking";
+import { markCategoryOpened, getCategoryUnseenCount, markItemsSeen } from "@/lib/categoryTracking";
 import type { Category, Item } from "@shared/schema";
 
 export default function Home() {
@@ -56,6 +56,7 @@ export default function Home() {
 
   const handleCategoryClick = (category: Category) => {
     markCategoryOpened(category.id, items);
+    markItemsSeen(items.filter((i) => i.categoryId === category.id).map((i) => i.id));
     setBadgeTick((t) => t + 1);
     setSelectedCategory(category);
   };

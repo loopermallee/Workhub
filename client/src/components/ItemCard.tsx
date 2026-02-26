@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { FileText, ExternalLink, ChevronRight, Clock } from "lucide-react";
 import { isRecentlyUpdated } from "@/hooks/use-app-data";
 import { format, parseISO } from "date-fns";
 import type { Item } from "@shared/schema";
+import { isItemSeen, markItemSeen } from "@/lib/categoryTracking";
 
 interface ItemCardProps {
   item: Item;
@@ -10,10 +12,13 @@ interface ItemCardProps {
 }
 
 export function ItemCard({ item, onClick, categoryColor }: ItemCardProps) {
-  const isRecent = isRecentlyUpdated(item.lastUpdated);
+  const [localSeen, setLocalSeen] = useState(() => isItemSeen(item.id));
+  const isRecent = isRecentlyUpdated(item.lastUpdated) && !localSeen;
   const isLink = item.type === "link";
 
   const handleClick = () => {
+    markItemSeen(item.id);
+    setLocalSeen(true);
     if (isLink && item.url) {
       window.open(item.url, "_blank", "noopener,noreferrer");
     } else if (onClick) {

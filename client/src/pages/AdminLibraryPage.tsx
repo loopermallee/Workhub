@@ -123,6 +123,7 @@ export default function AdminLibraryPage() {
   const [editItem, setEditItem] = useState<LibraryItem | null>(null);
   const [editForm, setEditForm] = useState<ItemFormState>(defaultForm());
   const [deleteTarget, setDeleteTarget] = useState<LibraryItem | null>(null);
+  const [indexStatus, setIndexStatus] = useState<Record<string, "idle" | "loading" | "done" | "error">>({});
 
   const { data: items = [], isLoading } = useQuery<LibraryItem[]>({
     queryKey: ["/api/library"],
@@ -167,6 +168,45 @@ export default function AdminLibraryPage() {
       queryClient.invalidateQueries({ queryKey: ["/api/library"] });
     },
   });
+
+  const indexablePdfItems = items.filter(
+    (i) => i.source === "upload" && i.fileType === "pdf"
+  );
+  const anyIndexing = Object.values(indexStatus).some((s) => s === "loading");
+
+  const handleIndex = async (item: LibraryItem) => {
+    setIndexStatus((prev) => ({ ...prev, [item.id]: "loading" }));
+    try {
+      const res = await fetch(`/api/library/${item.id}/index`, {
+        method: "POST",
+        headers: { "x-admin-pin": getAdminPin() },
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: "Index failed" }));
+        throw new Error(err.message);
+      }
+      setIndexStatus((prev) => ({ ...prev, [item.id]: "done" }));
+      queryClient.invalidateQueries({ queryKey: ["/api/library"] });
+    } catch {
+      setIndexStatus((prev) => ({ ...prev, [item.id]: "error" }));
+    }
+  };
+
+  const handleIndexAll = async () => {
+    for (const item of indexablePdfItems) {
+      const status = item.searchText ? "done" : (indexStatus[item.id] ?? "idle");
+      if (status !== "done") {
+        await handleIndex(item);
+      }
+    }
+  };
+
+  const getItemIndexStatus = (item: LibraryItem): "idle" | "loading" | "done" | "error" => {
+    if (indexStatus[item.id]) return indexStatus[item.id];
+    if (item.searchText) return "done";
+    return "idle";
+  };
 
   if (!authed) {
     return <PinGate onAuth={() => setAuthed(true)} />;
@@ -299,15 +339,30 @@ export default function AdminLibraryPage() {
             <h2 className="text-xl font-bold font-display text-primary">Library Admin</h2>
             <p className="text-xs text-muted-foreground">{items.length} documents</p>
           </div>
-          <Button
-            data-testid="button-add-library-item"
-            size="sm"
-            onClick={() => { setShowAddForm(true); setForm(defaultForm()); setSelectedFiles([]); setUploadResults([]); setUploadError(""); }}
-            className="flex items-center gap-1.5"
-          >
-            <Plus className="w-4 h-4" />
-            Add
-          </Button>
+          <div className="flex items-center gap-2">
+            {indexablePdfItems.length > 0 && (
+              <Button
+                data-testid="button-index-all-pdfs"
+                size="sm"
+                variant="outline"
+                onClick={handleIndexAll}
+                disabled={anyIndexing}
+                className="flex items-center gap-1.5 text-xs"
+              >
+                {anyIndexing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Database className="w-3.5 h-3.5" />}
+                Index All
+              </Button>
+            )}
+            <Button
+              data-testid="button-add-library-item"
+              size="sm"
+              onClick={() => { setShowAddForm(true); setForm(defaultForm()); setSelectedFiles([]); setUploadResults([]); setUploadError(""); }}
+              className="flex items-center gap-1.5"
+            >
+              <Plus className="w-4 h-4" />
+              Add
+            </Button>
+          </div>
         </div>
 
         {isLoading ? (
@@ -333,6 +388,34 @@ export default function AdminLibraryPage() {
                   </div>
                 </div>
                 <div className="flex gap-1 flex-shrink-0">
+                  {item.source === "upload" && item.fileType === "pdf" && (() => {
+                    const status = getItemIndexStatus(item);
+                    return (
+                      <button
+                        data-testid={`button-index-library-${item.id}`}
+                        onClick={() => handleIndex(item)}
+                        disabled={status === "loading" || status === "done"}
+                        title="Index PDF for keyword search"
+                        className={`p-1.5 rounded-lg transition-colors ${
+                          status === "done"
+                            ? "text-green-500 cursor-default"
+                            : status === "error"
+                            ? "text-destructive hover:bg-destructive/10"
+                            : "text-muted-foreground hover:bg-secondary hover:text-primary"
+                        }`}
+                      >
+                        {status === "loading" ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : status === "done" ? (
+                          <CheckCircle className="w-4 h-4" />
+                        ) : status === "error" ? (
+                          <AlertCircle className="w-4 h-4" />
+                        ) : (
+                          <Database className="w-4 h-4" />
+                        )}
+                      </button>
+                    );
+                  })()}
                   <button
                     data-testid={`button-edit-library-${item.id}`}
                     onClick={() => openEdit(item)}

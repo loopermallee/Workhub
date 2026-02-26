@@ -1,11 +1,12 @@
 import type { Item } from "@shared/schema";
 import { isRecentlyUpdated } from "@/hooks/use-app-data";
 
-const STORAGE_KEY = "category:seen";
+const CATEGORY_SEEN_KEY = "category:seen";
+const ITEMS_SEEN_KEY = "items:seen";
 
 function getSeenMap(): Record<string, string[]> {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(CATEGORY_SEEN_KEY);
     if (!raw) return {};
     return JSON.parse(raw) as Record<string, string[]>;
   } catch {
@@ -15,10 +16,44 @@ function getSeenMap(): Record<string, string[]> {
 
 function saveSeenMap(map: Record<string, string[]>): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
+    localStorage.setItem(CATEGORY_SEEN_KEY, JSON.stringify(map));
   } catch {
     // ignore
   }
+}
+
+function getSeenItemsSet(): Set<string> {
+  try {
+    const raw = localStorage.getItem(ITEMS_SEEN_KEY);
+    if (!raw) return new Set();
+    return new Set(JSON.parse(raw) as string[]);
+  } catch {
+    return new Set();
+  }
+}
+
+function saveSeenItemsSet(set: Set<string>): void {
+  try {
+    localStorage.setItem(ITEMS_SEEN_KEY, JSON.stringify(Array.from(set)));
+  } catch {
+    // ignore
+  }
+}
+
+export function isItemSeen(itemId: string): boolean {
+  return getSeenItemsSet().has(itemId);
+}
+
+export function markItemSeen(itemId: string): void {
+  const set = getSeenItemsSet();
+  set.add(itemId);
+  saveSeenItemsSet(set);
+}
+
+export function markItemsSeen(itemIds: string[]): void {
+  const set = getSeenItemsSet();
+  itemIds.forEach((id) => set.add(id));
+  saveSeenItemsSet(set);
 }
 
 export function markCategoryOpened(categoryId: string, items: Item[]): void {

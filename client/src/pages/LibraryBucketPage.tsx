@@ -348,20 +348,27 @@ export default function LibraryBucketPage() {
       const results: UploadResult[] = await res.json();
       setUploadResults(results);
 
-      for (const result of results) {
-        const nameWithoutExt = result.originalName.replace(/\.[^/.]+$/, "");
-        await createMutation.mutateAsync({
-          title: nameWithoutExt,
-          bucket: bucket as Bucket,
-          fileType: result.fileType,
-          source: "upload",
-          url: result.url,
-          version: quickForm.version || undefined,
-          lastUpdated: quickForm.lastUpdated,
-          tags: parseTags(quickForm.tags),
-          summary: quickForm.summary || undefined,
-          patientType: isProtocols && quickForm.patientType ? quickForm.patientType : null,
-        });
+      try {
+        for (const result of results) {
+          const nameWithoutExt = result.originalName.replace(/\.[^/.]+$/, "");
+          await createMutation.mutateAsync({
+            title: nameWithoutExt,
+            bucket: bucket as Bucket,
+            fileType: result.fileType,
+            source: "upload",
+            url: result.url,
+            version: quickForm.version || undefined,
+            lastUpdated: quickForm.lastUpdated,
+            tags: parseTags(quickForm.tags),
+            summary: quickForm.summary || undefined,
+            patientType: isProtocols && quickForm.patientType ? quickForm.patientType : null,
+          });
+        }
+      } catch (saveErr: any) {
+        console.error("Library save error:", saveErr);
+        setUploadError("Files uploaded but failed to save to library: " + (saveErr?.message ?? "Unknown error"));
+        setIsUploading(false);
+        return;
       }
 
       queryClient.invalidateQueries({ queryKey: ["/api/library"] });
@@ -373,8 +380,16 @@ export default function LibraryBucketPage() {
         setUploadResults([]);
         setQuickForm(defaultQuickForm());
       }, 1200);
-    } catch {
-      setUploadError("Upload failed. Please try again.");
+    } catch (err: any) {
+      console.error("Upload error:", err);
+      const msg: string = err?.message ?? "";
+      if (msg.startsWith("401")) {
+        setUploadError("Admin session expired. Re-enter admin mode and try again.");
+      } else if (msg.startsWith("400")) {
+        setUploadError("Validation error: " + msg.slice(4).trim());
+      } else {
+        setUploadError(msg || "Upload failed. Please try again.");
+      }
     } finally {
       setIsUploading(false);
     }
@@ -507,6 +522,18 @@ export default function LibraryBucketPage() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {!adminMode && (
+          <div className="mt-8 text-center">
+            <button
+              data-testid="link-admin-access"
+              onClick={() => setLocation("/admin/library")}
+              className="text-[11px] text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors"
+            >
+              Admin access
+            </button>
           </div>
         )}
       </div>
