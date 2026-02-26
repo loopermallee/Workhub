@@ -9,7 +9,8 @@
     "tags": [],
     "id": "lib-1772043407253-cpnn1",
     "createdAt": "2026-02-25T18:16:47.253Z",
-    "updatedAt": "2026-02-25T18:16:47.253Z"
+    "updatedAt": "2026-02-26T00:59:11.324Z",
+    "patientType": "adult"
   },
   {
     "bucket": "Protocols",
@@ -21,7 +22,8 @@
     "tags": [],
     "id": "lib-1772043407074-rid7o",
     "createdAt": "2026-02-25T18:16:47.074Z",
-    "updatedAt": "2026-02-25T18:16:47.074Z"
+    "updatedAt": "2026-02-26T00:59:21.382Z",
+    "patientType": "paed"
   },
   {
     "bucket": "Protocols",

@@ -1,20 +1,51 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useRef } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation, useParams } from "wouter";
 import {
   ArrowLeft, Search, FileText, FileSpreadsheet, Presentation,
-  ExternalLink, Globe, X, BookOpen
+  ExternalLink, Globe, X, BookOpen, Plus, Upload,
+  CheckCircle, AlertCircle, Loader2
 } from "lucide-react";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { MobileLayout } from "@/components/layout/MobileLayout";
 import type { LibraryItem } from "@shared/schema";
 import { markLibraryRead, isLibraryRead } from "@/lib/readTracking";
-import { queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { isAdminMode, getAdminPin } from "@/lib/adminMode";
 
 const BUCKET_LABELS: Record<string, string> = {
   SOP: "SOPs",
   Protocols: "Protocols",
   Others: "Others",
 };
+
+type Bucket = "SOP" | "Protocols" | "Others";
+type PatientType = "adult" | "paed" | "";
+
+interface UploadResult {
+  url: string;
+  fileType: string;
+  originalName: string;
+  filename: string;
+}
+
+interface QuickUploadForm {
+  version: string;
+  lastUpdated: string;
+  tags: string;
+  summary: string;
+  patientType: PatientType;
+}
+
+const defaultQuickForm = (): QuickUploadForm => ({
+  version: "",
+  lastUpdated: new Date().toISOString().slice(0, 10),
+  tags: "",
+  summary: "",
+  patientType: "",
+});
 
 function fileTypeIcon(fileType: string) {
   switch (fileType) {
@@ -154,10 +185,27 @@ export default function LibraryBucketPage() {
   const [, setLocation] = useLocation();
   const [search, setSearch] = useState("");
   const [, forceUpdate] = useState(0);
+  const adminMode = isAdminMode();
+
+  const [showUpload, setShowUpload] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [uploadResults, setUploadResults] = useState<UploadResult[]>([]);
+  const [uploadError, setUploadError] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+  const [quickForm, setQuickForm] = useState<QuickUploadForm>(defaultQuickForm());
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: allItems = [], isLoading } = useQuery<LibraryItem[]>({
     queryKey: ["/api/library"],
     staleTime: 30000,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: (payload: object) =>
+      apiRequest("POST", "/api/library", { pin: getAdminPin(), ...payload }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/library"] });
+    },
   });
 
   const isProtocols = bucket === "Protocols";
@@ -187,6 +235,80 @@ export default function LibraryBucketPage() {
     }
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSelectedFiles(Array.from(e.target.files ?? []));
+    setUploadResults([]);
+    setUploadError("");
+  };
+
+  const parseTags = (s: string) =>
+    s.split(",").map((t) => t.trim()).filter(Boolean);
+
+  const handleUpload = async () => {
+    if (selectedFiles.length === 0) return;
+    setIsUploading(true);
+    setUploadError("");
+    try {
+      const formData = new FormData();
+      selectedFiles.forEach((f) => formData.append("files", f));
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        headers: { "x-admin-pin": getAdminPin() },
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        setUploadError(err.message ?? "Upload failed");
+        return;
+      }
+
+      const results: UploadResult[] = await res.json();
+      setUploadResults(results);
+
+      for (const result of results) {
+        const nameWithoutExt = result.originalName.replace(/\.[^/.]+$/, "");
+        await createMutation.mutateAsync({
+          title: nameWithoutExt,
+          bucket: bucket as Bucket,
+          fileType: result.fileType,
+          source: "upload",
+          url: result.url,
+          version: quickForm.version || undefined,
+          lastUpdated: quickForm.lastUpdated,
+          tags: parseTags(quickForm.tags),
+          summary: quickForm.summary || undefined,
+          patientType: isProtocols && quickForm.patientType ? quickForm.patientType : null,
+        });
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["/api/library"] });
+      setSelectedFiles([]);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+
+      setTimeout(() => {
+        setShowUpload(false);
+        setUploadResults([]);
+        setQuickForm(defaultQuickForm());
+      }, 1200);
+    } catch {
+      setUploadError("Upload failed. Please try again.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleCloseUpload = () => {
+    if (isUploading) return;
+    setShowUpload(false);
+    setSelectedFiles([]);
+    setUploadResults([]);
+    setUploadError("");
+    setQuickForm(defaultQuickForm());
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
   const label = BUCKET_LABELS[bucket] ?? bucket;
 
   return (
@@ -201,10 +323,20 @@ export default function LibraryBucketPage() {
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div>
+          <div className="flex-1">
             <h2 className="text-xl font-bold font-display text-primary">{label}</h2>
             <p className="text-xs text-muted-foreground">{bucketItems.length} {bucketItems.length === 1 ? "document" : "documents"}</p>
           </div>
+          {adminMode && (
+            <button
+              data-testid="button-bucket-upload"
+              onClick={() => setShowUpload(true)}
+              className="flex items-center justify-center w-9 h-9 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95 transition-all shadow-sm"
+              aria-label={`Upload to ${label}`}
+            >
+              <Plus className="w-5 h-5" strokeWidth={2.5} />
+            </button>
+          )}
         </div>
 
         <div className="relative mb-4">
@@ -239,6 +371,14 @@ export default function LibraryBucketPage() {
             <p className="text-sm text-muted-foreground">
               {search ? "No documents match your search" : "No documents in this bucket yet"}
             </p>
+            {adminMode && !search && (
+              <button
+                onClick={() => setShowUpload(true)}
+                className="mt-3 text-sm text-primary font-medium hover:underline"
+              >
+                Upload the first document
+              </button>
+            )}
           </div>
         ) : (
           <div className="space-y-2.5">
@@ -248,6 +388,158 @@ export default function LibraryBucketPage() {
           </div>
         )}
       </div>
+
+      {/* Quick Upload Dialog */}
+      <Dialog open={showUpload} onOpenChange={(o) => !o && handleCloseUpload()}>
+        <DialogContent className="max-w-sm mx-auto max-h-[90dvh] overflow-y-auto rounded-xl p-5">
+          <DialogTitle className="text-base font-semibold font-display">
+            Upload to {label}
+          </DialogTitle>
+          <DialogDescription className="sr-only">
+            Upload files to the {label} bucket. Filenames are used as document titles.
+          </DialogDescription>
+
+          <div className="space-y-3 mt-2">
+            {/* Bucket indicator — read-only */}
+            <div className="flex items-center gap-2 px-3 py-2 bg-secondary rounded-lg">
+              <span className="text-xs text-muted-foreground font-medium">Bucket:</span>
+              <span className="text-xs font-semibold text-primary">{bucket}</span>
+            </div>
+
+            {/* Patient type — Protocols only */}
+            {isProtocols && (
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Patient Type</label>
+                <div className="flex gap-2">
+                  {(["", "adult", "paed"] as const).map((pt) => (
+                    <button
+                      key={pt}
+                      type="button"
+                      data-testid={`button-patient-type-upload-${pt || "none"}`}
+                      onClick={() => setQuickForm((f) => ({ ...f, patientType: pt }))}
+                      className={`flex-1 py-2 text-xs font-semibold rounded-lg border transition-colors ${
+                        quickForm.patientType === pt
+                          ? pt === "adult"
+                            ? "bg-blue-600 text-white border-blue-600"
+                            : pt === "paed"
+                            ? "bg-orange-500 text-white border-orange-500"
+                            : "bg-primary text-primary-foreground border-primary"
+                          : "bg-secondary text-muted-foreground border-border hover:border-primary/40"
+                      }`}
+                    >
+                      {pt === "" ? "None" : pt === "adult" ? "Adult" : "Paed"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* File selector */}
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                Select Files <span className="text-muted-foreground/50">(filenames used as titles)</span>
+              </label>
+              <input
+                ref={fileInputRef}
+                data-testid="input-bucket-file-upload"
+                type="file"
+                multiple
+                accept=".pdf,.docx,.xlsx,.pptx,.doc,.xls,.ppt"
+                onChange={handleFileChange}
+                className="w-full text-xs text-muted-foreground file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
+              />
+              {selectedFiles.length > 0 && (
+                <p className="text-xs text-muted-foreground mt-1.5">
+                  {selectedFiles.length} file{selectedFiles.length > 1 ? "s" : ""} selected
+                </p>
+              )}
+            </div>
+
+            {/* Optional metadata */}
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Version</label>
+                <Input
+                  data-testid="input-bucket-upload-version"
+                  placeholder="e.g. v1.2"
+                  value={quickForm.version}
+                  onChange={(e) => setQuickForm((f) => ({ ...f, version: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Last Updated</label>
+                <Input
+                  data-testid="input-bucket-upload-date"
+                  type="date"
+                  value={quickForm.lastUpdated}
+                  onChange={(e) => setQuickForm((f) => ({ ...f, lastUpdated: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Tags <span className="text-muted-foreground/50">(comma separated)</span></label>
+              <Input
+                data-testid="input-bucket-upload-tags"
+                placeholder="cardiac, protocol, paed"
+                value={quickForm.tags}
+                onChange={(e) => setQuickForm((f) => ({ ...f, tags: e.target.value }))}
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Summary <span className="text-muted-foreground/50">(optional)</span></label>
+              <textarea
+                data-testid="input-bucket-upload-summary"
+                placeholder="Brief description…"
+                value={quickForm.summary}
+                onChange={(e) => setQuickForm((f) => ({ ...f, summary: e.target.value }))}
+                rows={2}
+                className="w-full px-3 py-2 text-sm bg-secondary border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 text-primary placeholder:text-muted-foreground/50 resize-none"
+              />
+            </div>
+
+            {uploadError && (
+              <p className="text-xs text-destructive flex items-center gap-1">
+                <AlertCircle className="w-3 h-3 flex-shrink-0" /> {uploadError}
+              </p>
+            )}
+
+            {uploadResults.length > 0 && (
+              <div className="space-y-1">
+                {uploadResults.map((r) => (
+                  <p key={r.filename} className="text-xs text-green-600 dark:text-green-400 flex items-center gap-1">
+                    <CheckCircle className="w-3 h-3 flex-shrink-0" /> {r.originalName}
+                  </p>
+                ))}
+              </div>
+            )}
+
+            <div className="flex gap-2 pt-1">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={handleCloseUpload}
+                disabled={isUploading}
+              >
+                Cancel
+              </Button>
+              <Button
+                data-testid="button-bucket-upload-submit"
+                className="flex-1"
+                onClick={handleUpload}
+                disabled={selectedFiles.length === 0 || isUploading}
+              >
+                {isUploading ? (
+                  <><Loader2 className="w-4 h-4 animate-spin mr-1" />Uploading…</>
+                ) : (
+                  <><Upload className="w-4 h-4 mr-1" />Upload {selectedFiles.length > 0 ? `(${selectedFiles.length})` : ""}</>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </MobileLayout>
   );
 }
