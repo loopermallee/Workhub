@@ -1,9 +1,11 @@
 import fs from "fs/promises";
 import path from "path";
-import { type AppData, type NewsItem, type LibraryItem } from "@shared/schema";
+import { type AppData, type NewsItem, type LibraryItem, type Item } from "@shared/schema";
 
 export interface IStorage {
   getAppData(): Promise<AppData>;
+  addAppDataItem(item: Item): Promise<void>;
+  deleteAppDataItem(id: string): Promise<Item | null>;
   getNewsItems(): Promise<NewsItem[]>;
   saveNewsItem(item: NewsItem): Promise<void>;
   saveAllNewsItems(items: NewsItem[]): Promise<void>;
@@ -19,6 +21,23 @@ export class FileStorage implements IStorage {
     const filePath = path.resolve(process.cwd(), "shared/appData.json");
     const data = await fs.readFile(filePath, "utf-8");
     return JSON.parse(data) as AppData;
+  }
+
+  async addAppDataItem(item: Item): Promise<void> {
+    const filePath = path.resolve(process.cwd(), "shared/appData.json");
+    const appData = await this.getAppData();
+    appData.items.push(item);
+    await fs.writeFile(filePath, JSON.stringify(appData, null, 2), "utf-8");
+  }
+
+  async deleteAppDataItem(id: string): Promise<Item | null> {
+    const filePath = path.resolve(process.cwd(), "shared/appData.json");
+    const appData = await this.getAppData();
+    const item = appData.items.find((i) => i.id === id);
+    if (!item) return null;
+    appData.items = appData.items.filter((i) => i.id !== id);
+    await fs.writeFile(filePath, JSON.stringify(appData, null, 2), "utf-8");
+    return item;
   }
 
   async getNewsItems(): Promise<NewsItem[]> {

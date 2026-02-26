@@ -525,17 +525,6 @@ export default function LibraryBucketPage() {
           </div>
         )}
 
-        {!adminMode && (
-          <div className="mt-8 text-center">
-            <button
-              data-testid="link-admin-access"
-              onClick={() => setLocation("/admin/library")}
-              className="text-[11px] text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors"
-            >
-              Admin access
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Quick Upload Dialog */}

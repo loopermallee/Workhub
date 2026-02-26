@@ -1,11 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
-import { Bell, Home, FileText, Sun, CloudSun, Sunset, Moon, LogOut, X, Pin, BookOpen, ExternalLink, CheckCheck } from "lucide-react";
+import { Bell, Home, FileText, Sun, CloudSun, Sunset, Moon, LogOut, X, Pin, BookOpen, ExternalLink, CheckCheck, Loader2 } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { useAppData } from "@/hooks/use-app-data";
-import { isAdminMode, clearAdminMode } from "@/lib/adminMode";
+import { isAdminMode, clearAdminMode, setAdminMode } from "@/lib/adminMode";
 import { useTheme } from "@/components/ThemeProvider";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import {
   getUnreadNewsCount, getUnreadLibraryCount,
   getUnreadNewsItems, getUnreadLibraryItems,
@@ -76,6 +80,14 @@ export function MobileLayout({ children }: MobileLayoutProps) {
   const [, forceUpdate] = useState(0);
   const queryClient = useQueryClient();
 
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [pin, setPin] = useState("");
+  const [pinError, setPinError] = useState("");
+  const [pinShake, setPinShake] = useState(false);
+  const [pinLoading, setPinLoading] = useState(false);
+  const homeTapTimestamps = useRef<number[]>([]);
+  const { toast } = useToast();
+
   const { theme, toggleTheme } = useTheme();
 
   useAppData();
@@ -105,7 +117,56 @@ export function MobileLayout({ children }: MobileLayoutProps) {
 
   const greetingText = getGreetingText();
 
-  const handleHomeClick = () => { setShowNotifications(false); setLocation("/"); };
+  const handleHomeClick = () => {
+    setShowNotifications(false);
+    setLocation("/");
+    const now = Date.now();
+    homeTapTimestamps.current = homeTapTimestamps.current.filter((t) => now - t < 4000);
+    homeTapTimestamps.current.push(now);
+    if (homeTapTimestamps.current.length >= 6) {
+      homeTapTimestamps.current = [];
+      if (isAdminMode()) {
+        toast({ description: "You are already in admin mode" });
+      } else {
+        setPin("");
+        setPinError("");
+        setShowPinModal(true);
+      }
+    }
+  };
+
+  const handlePinSubmit = async () => {
+    if (!pin.trim()) return;
+    setPinLoading(true);
+    try {
+      const res = await fetch("/api/news/verify-pin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pin }),
+      });
+      if (res.status === 401) {
+        setPinError("Incorrect PIN");
+        setPinShake(true);
+        setTimeout(() => setPinShake(false), 500);
+        setPin("");
+        return;
+      }
+      if (res.ok) {
+        setAdminMode(pin);
+        setAdminActive(true);
+        setShowPinModal(false);
+        setPin("");
+        setPinError("");
+        toast({ description: "Admin mode activated" });
+      } else {
+        setPinError("An error occurred");
+      }
+    } catch {
+      setPinError("An error occurred");
+    } finally {
+      setPinLoading(false);
+    }
+  };
   const handleProtocolsClick = () => { setShowNotifications(false); setLocation("/library"); };
 
   const handleExitAdmin = () => {
@@ -162,6 +223,7 @@ export function MobileLayout({ children }: MobileLayoutProps) {
   const ThemeIcon = theme === "dark" ? Moon : (greetingText.startsWith("Good morning") ? Sun : greetingText.startsWith("Good afternoon") ? CloudSun : greetingText.startsWith("Good evening") ? Sunset : Moon);
 
   return (
+    <>
     <div className="flex flex-col h-[100dvh] w-full max-w-md mx-auto bg-background overflow-hidden relative shadow-2xl sm:border-x sm:border-border">
 
       {/* Full-screen theme transition overlay */}
@@ -412,5 +474,42 @@ export function MobileLayout({ children }: MobileLayoutProps) {
       </nav>
 
     </div>
+
+    <Dialog open={showPinModal} onOpenChange={(open) => { setShowPinModal(open); setPin(""); setPinError(""); }}>
+      <DialogContent className="max-w-xs mx-auto rounded-2xl p-6">
+        <DialogTitle className="text-base font-semibold font-display text-center">Admin Access</DialogTitle>
+        <DialogDescription className="text-xs text-muted-foreground text-center mt-1">
+          Enter your admin PIN to activate admin mode.
+        </DialogDescription>
+        <div className="mt-4 space-y-3">
+          <motion.div animate={pinShake ? { x: [-6, 6, -6, 6, 0] } : {}} transition={{ duration: 0.3 }}>
+            <Input
+              data-testid="input-home-admin-pin"
+              type="password"
+              inputMode="numeric"
+              placeholder="Enter PIN"
+              value={pin}
+              onChange={(e) => setPin(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handlePinSubmit()}
+              className="text-center text-lg tracking-widest"
+              autoFocus
+            />
+          </motion.div>
+          {pinError && (
+            <p data-testid="text-home-pin-error" className="text-xs text-destructive text-center">{pinError}</p>
+          )}
+          <Button
+            data-testid="button-home-pin-submit"
+            onClick={handlePinSubmit}
+            disabled={pinLoading}
+            className="w-full"
+          >
+            {pinLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+            {pinLoading ? "Verifying..." : "Unlock"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

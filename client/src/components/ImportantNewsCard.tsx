@@ -8,8 +8,9 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/compone
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import type { NewsItem } from "@shared/schema";
-import { setAdminMode } from "@/lib/adminMode";
+import { setAdminMode, isAdminMode } from "@/lib/adminMode";
 import { getUnreadNewsCount } from "@/lib/readTracking";
+import { useToast } from "@/hooks/use-toast";
 
 interface NewsResponse {
   active: NewsItem[];
@@ -33,6 +34,7 @@ export function ImportantNewsCard() {
 
   const tapTimestamps = useRef<number[]>([]);
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
 
   const { data } = useQuery<NewsResponse>({ queryKey: ["/api/news"] });
 
@@ -46,9 +48,13 @@ export function ImportantNewsCard() {
     tapTimestamps.current.push(now);
     if (tapTimestamps.current.length >= 6) {
       tapTimestamps.current = [];
-      setShowPinModal(true);
+      if (isAdminMode()) {
+        toast({ description: "You are already in admin mode" });
+      } else {
+        setShowPinModal(true);
+      }
     }
-  }, []);
+  }, [toast]);
 
   const handleToggle = () => {
     setIsExpanded((prev) => !prev);

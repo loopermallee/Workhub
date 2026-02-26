@@ -44,6 +44,47 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/data/items", async (req, res) => {
+    try {
+      const adminPin = getAdminPin();
+      const { pin, categoryId, title, type, url, content, tags } = req.body;
+      if (!adminPin) return res.status(500).json({ message: "Admin PIN not configured" });
+      if (pin !== adminPin) return res.status(401).json({ message: "Invalid PIN" });
+      if (!categoryId || !title?.trim() || !type) {
+        return res.status(400).json({ message: "categoryId, title, and type are required" });
+      }
+      const newItem = {
+        id: `item-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        categoryId,
+        title: title.trim(),
+        type,
+        ...(type === "link" ? { url: url ?? "" } : { content: content ?? "" }),
+        tags: Array.isArray(tags) ? tags : (tags ? String(tags).split(",").map((t: string) => t.trim()).filter(Boolean) : []),
+        lastUpdated: new Date().toISOString().slice(0, 10),
+      };
+      await storage.addAppDataItem(newItem);
+      res.status(201).json(newItem);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to save item" });
+    }
+  });
+
+  app.delete("/api/data/items/:id", async (req, res) => {
+    try {
+      const adminPin = getAdminPin();
+      const pin = req.headers["x-admin-pin"] as string;
+      if (!adminPin) return res.status(500).json({ message: "Admin PIN not configured" });
+      if (pin !== adminPin) return res.status(401).json({ message: "Invalid PIN" });
+      const deleted = await storage.deleteAppDataItem(req.params.id);
+      if (!deleted) return res.status(404).json({ message: "Item not found" });
+      res.json(deleted);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to delete item" });
+    }
+  });
+
   app.get("/api/news", async (req, res) => {
     try {
       const items = await storage.getNewsItems();

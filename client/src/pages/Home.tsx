@@ -10,6 +10,7 @@ import { CategoryDrawer } from "@/components/CategoryDrawer";
 import { useAppData, searchItems } from "@/hooks/use-app-data";
 import { getCategoryColor } from "@/lib/categoryColors";
 import { markCategoryOpened, getCategoryUnseenCount, markItemsSeen } from "@/lib/categoryTracking";
+import { isAdminMode } from "@/lib/adminMode";
 import type { Category, Item } from "@shared/schema";
 
 export default function Home() {
@@ -121,6 +122,7 @@ export default function Home() {
         isOpen={selectedCategory !== null}
         onClose={() => setSelectedCategory(null)}
         onItemClick={handleItemClick}
+        adminMode={isAdminMode()}
       />
 
       <ContentDrawer
