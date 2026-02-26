@@ -258,6 +258,34 @@ export async function registerRoutes(
     }
   });
 
+  app.post("/api/library/:id/index", async (req, res) => {
+    try {
+      const adminPin = getAdminPin();
+      const pin = req.headers["x-admin-pin"] as string;
+      if (!adminPin) return res.status(500).json({ message: "Admin PIN not configured" });
+      if (pin !== adminPin) return res.status(401).json({ message: "Invalid PIN" });
+
+      const items = await storage.getLibraryItems();
+      const item = items.find((i) => i.id === req.params.id);
+      if (!item) return res.status(404).json({ message: "Library item not found" });
+      if (item.fileType !== "pdf") return res.status(400).json({ message: "Only PDF items can be indexed" });
+      if (item.source !== "upload") return res.status(400).json({ message: "Only uploaded PDFs can be indexed (URL-based PDFs not supported)" });
+
+      const filePath = path.resolve(process.cwd(), item.url.replace(/^\//, ""));
+      const buffer = await fs.readFile(filePath);
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const pdfParse = require("pdf-parse");
+      const data = await pdfParse(buffer);
+      const searchText = data.text.replace(/\s+/g, " ").trim();
+
+      await storage.updateLibraryItem(item.id, { searchText } as any);
+      res.json({ ok: true, chars: searchText.length });
+    } catch (err: any) {
+      console.error("PDF index error:", err);
+      res.status(500).json({ message: err?.message ?? "Failed to extract PDF text" });
+    }
+  });
+
   app.post("/api/upload", upload.array("files", 20), async (req, res) => {
     try {
       const adminPin = getAdminPin();

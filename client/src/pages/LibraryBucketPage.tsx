@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation, useParams } from "wouter";
 import {
@@ -83,31 +83,50 @@ function fileTypeLabel(fileType: string): string {
 function PatientTypeBadge({ patientType }: { patientType: "adult" | "paed" | null | undefined }) {
   if (patientType === "adult") {
     return (
-      <span
-        data-testid="badge-patient-adult"
-        className="text-[10px] font-bold px-2 py-0.5 rounded-md flex-shrink-0 bg-blue-600 text-white dark:bg-blue-500"
-      >
+      <span data-testid="badge-patient-adult" className="text-[10px] font-bold px-2 py-0.5 rounded-md flex-shrink-0 bg-blue-600 text-white dark:bg-blue-500">
         Adult
       </span>
     );
   }
   if (patientType === "paed") {
     return (
-      <span
-        data-testid="badge-patient-paed"
-        className="text-[10px] font-bold px-2 py-0.5 rounded-md flex-shrink-0 bg-orange-500 text-white dark:bg-orange-400"
-      >
+      <span data-testid="badge-patient-paed" className="text-[10px] font-bold px-2 py-0.5 rounded-md flex-shrink-0 bg-orange-500 text-white dark:bg-orange-400">
         Paed
       </span>
     );
   }
   return (
-    <span
-      data-testid="badge-patient-protocol"
-      className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md flex-shrink-0 bg-secondary text-muted-foreground"
-    >
+    <span data-testid="badge-patient-protocol" className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md flex-shrink-0 bg-secondary text-muted-foreground">
       Protocol
     </span>
+  );
+}
+
+function escapeRegex(s: string) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function extractSnippet(text: string, query: string, radius = 70): string {
+  const idx = text.toLowerCase().indexOf(query.toLowerCase());
+  if (idx === -1) return text.slice(0, 160) + (text.length > 160 ? "…" : "");
+  const start = Math.max(0, idx - radius);
+  const end = Math.min(text.length, idx + query.length + radius);
+  return (start > 0 ? "…" : "") + text.slice(start, end) + (end < text.length ? "…" : "");
+}
+
+function HighlightedText({ text, query }: { text: string; query: string }) {
+  if (!query) return <>{text}</>;
+  const parts = text.split(new RegExp(`(${escapeRegex(query)})`, "gi"));
+  return (
+    <>
+      {parts.map((part, i) =>
+        part.toLowerCase() === query.toLowerCase() ? (
+          <mark key={i} className="bg-yellow-200 dark:bg-yellow-700/60 text-inherit rounded-sm px-0.5 font-semibold not-italic">
+            {part}
+          </mark>
+        ) : part
+      )}
+    </>
   );
 }
 
@@ -121,7 +140,6 @@ function LibraryItemCard({
   isProtocols: boolean;
 }) {
   const read = isLibraryRead(item.id);
-
   return (
     <button
       data-testid={`card-library-item-${item.id}`}
@@ -147,29 +165,17 @@ function LibraryItemCard({
             </span>
           )}
         </div>
-
         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1">
-          {item.version && (
-            <span className="text-[11px] text-muted-foreground/70 font-medium">{item.version}</span>
-          )}
-          {item.lastUpdated && (
-            <span className="text-[11px] text-muted-foreground/60">
-              Updated {item.lastUpdated}
-            </span>
-          )}
+          {item.version && <span className="text-[11px] text-muted-foreground/70 font-medium">{item.version}</span>}
+          {item.lastUpdated && <span className="text-[11px] text-muted-foreground/60">Updated {item.lastUpdated}</span>}
         </div>
-
         {item.summary && (
           <p className="text-xs text-muted-foreground mt-1 leading-relaxed line-clamp-2">{item.summary}</p>
         )}
-
         {item.tags && item.tags.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-1.5">
             {item.tags.slice(0, 4).map((tag) => (
-              <span
-                key={tag}
-                className="text-[10px] font-medium px-1.5 py-0.5 bg-secondary text-secondary-foreground rounded-md"
-              >
+              <span key={tag} className="text-[10px] font-medium px-1.5 py-0.5 bg-secondary text-secondary-foreground rounded-md">
                 {tag}
               </span>
             ))}
@@ -180,10 +186,64 @@ function LibraryItemCard({
   );
 }
 
+function KeywordResultCard({
+  item,
+  query,
+  onTap,
+  isProtocols,
+}: {
+  item: LibraryItem;
+  query: string;
+  onTap: (item: LibraryItem, query: string) => void;
+  isProtocols: boolean;
+}) {
+  const read = isLibraryRead(item.id);
+  const snippet = item.searchText ? extractSnippet(item.searchText, query) : "";
+
+  return (
+    <button
+      data-testid={`card-keyword-item-${item.id}`}
+      onClick={() => onTap(item, query)}
+      className="w-full flex items-start gap-3 p-3.5 bg-card border border-border rounded-xl shadow-sm hover:shadow-md active:scale-[0.99] transition-all text-left"
+    >
+      <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${fileTypeIconColor(item.fileType)}`}>
+        {fileTypeIcon(item.fileType)}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-start justify-between gap-2">
+          <p className="font-semibold text-sm text-primary leading-snug">
+            {!read && (
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-destructive mr-1.5 mb-0.5 align-middle" />
+            )}
+            {item.title}
+          </p>
+          {isProtocols ? (
+            <PatientTypeBadge patientType={item.patientType} />
+          ) : (
+            <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md flex-shrink-0 ${fileTypeIconColor(item.fileType)}`}>
+              {fileTypeLabel(item.fileType)}
+            </span>
+          )}
+        </div>
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
+          {item.version && <span className="text-[11px] text-muted-foreground/70 font-medium">{item.version}</span>}
+          {item.lastUpdated && <span className="text-[11px] text-muted-foreground/60">Updated {item.lastUpdated}</span>}
+        </div>
+        {snippet && (
+          <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed italic">
+            <HighlightedText text={snippet} query={query} />
+          </p>
+        )}
+      </div>
+    </button>
+  );
+}
+
 export default function LibraryBucketPage() {
   const { bucket } = useParams<{ bucket: string }>();
   const [, setLocation] = useLocation();
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [, forceUpdate] = useState(0);
   const adminMode = isAdminMode();
 
@@ -194,6 +254,11 @@ export default function LibraryBucketPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [quickForm, setQuickForm] = useState<QuickUploadForm>(defaultQuickForm());
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search.trim()), 200);
+    return () => clearTimeout(t);
+  }, [search]);
 
   const { data: allItems = [], isLoading } = useQuery<LibraryItem[]>({
     queryKey: ["/api/library"],
@@ -211,25 +276,41 @@ export default function LibraryBucketPage() {
   const isProtocols = bucket === "Protocols";
   const bucketItems = allItems.filter((i) => i.bucket === bucket);
 
-  const filtered = search.trim()
-    ? bucketItems.filter((item) => {
-        const q = search.toLowerCase();
-        return (
-          item.title.toLowerCase().includes(q) ||
-          item.tags.some((t) => t.toLowerCase().includes(q)) ||
-          (item.summary?.toLowerCase().includes(q) ?? false) ||
-          (item.version?.toLowerCase().includes(q) ?? false)
-        );
-      })
-    : bucketItems;
+  const { fileNameMatches, keywordMatches } = useMemo(() => {
+    if (!debouncedSearch) return { fileNameMatches: bucketItems, keywordMatches: [] as LibraryItem[] };
+    const q = debouncedSearch.toLowerCase();
 
-  const handleTap = (item: LibraryItem) => {
+    const fnMatches = bucketItems.filter((item) =>
+      item.title.toLowerCase().includes(q) ||
+      item.tags.some((t) => t.toLowerCase().includes(q)) ||
+      (item.version?.toLowerCase().includes(q) ?? false) ||
+      (item.summary?.toLowerCase().includes(q) ?? false)
+    );
+    const fnIds = new Set(fnMatches.map((i) => i.id));
+
+    const kwMatches = bucketItems.filter(
+      (item) =>
+        !fnIds.has(item.id) &&
+        item.searchText &&
+        item.searchText.toLowerCase().includes(q)
+    );
+
+    return { fileNameMatches: fnMatches, keywordMatches: kwMatches };
+  }, [debouncedSearch, bucketItems]);
+
+  const isSearching = debouncedSearch.length > 0;
+  const hasResults = fileNameMatches.length > 0 || keywordMatches.length > 0;
+
+  const handleTap = (item: LibraryItem, searchQ?: string) => {
     markLibraryRead(item.id);
     forceUpdate((n) => n + 1);
     queryClient.invalidateQueries({ queryKey: ["/api/library"] });
 
+    const q = searchQ ?? debouncedSearch;
+    const qParam = q ? `?q=${encodeURIComponent(q)}` : "";
+
     if (item.fileType === "pdf" && item.source === "upload") {
-      setLocation(`/viewer/${item.id}`);
+      setLocation(`/viewer/${item.id}${qParam}`);
     } else {
       window.open(item.url, "_blank", "noopener,noreferrer");
     }
@@ -339,19 +420,20 @@ export default function LibraryBucketPage() {
           )}
         </div>
 
+        {/* Search bar */}
         <div className="relative mb-4">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
           <input
             data-testid="input-library-search"
             type="text"
-            placeholder="Search by title, tag, version…"
+            placeholder="Search by title, tag, or keyword inside document…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-9 pr-9 py-2.5 text-sm bg-secondary border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 text-primary placeholder:text-muted-foreground/50"
           />
           {search && (
             <button
-              onClick={() => setSearch("")}
+              onClick={() => { setSearch(""); setDebouncedSearch(""); }}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-muted-foreground"
             >
               <X className="w-4 h-4" />
@@ -365,26 +447,66 @@ export default function LibraryBucketPage() {
               <div key={i} className="h-20 bg-secondary animate-pulse rounded-xl" />
             ))}
           </div>
-        ) : filtered.length === 0 ? (
+        ) : !isSearching ? (
+          /* Normal list — no search active */
+          bucketItems.length === 0 ? (
+            <div className="text-center py-12">
+              <FileText className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
+              <p className="text-sm text-muted-foreground">No documents in this bucket yet</p>
+              {adminMode && (
+                <button onClick={() => setShowUpload(true)} className="mt-3 text-sm text-primary font-medium hover:underline">
+                  Upload the first document
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              {bucketItems.map((item) => (
+                <LibraryItemCard key={item.id} item={item} onTap={handleTap} isProtocols={isProtocols} />
+              ))}
+            </div>
+          )
+        ) : !hasResults ? (
+          /* Search active, no results */
           <div className="text-center py-12">
-            <FileText className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
-            <p className="text-sm text-muted-foreground">
-              {search ? "No documents match your search" : "No documents in this bucket yet"}
-            </p>
-            {adminMode && !search && (
-              <button
-                onClick={() => setShowUpload(true)}
-                className="mt-3 text-sm text-primary font-medium hover:underline"
-              >
-                Upload the first document
-              </button>
-            )}
+            <Search className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
+            <p className="text-sm font-medium text-foreground">No results for "{debouncedSearch}"</p>
+            <p className="text-xs text-muted-foreground mt-1">Try different keywords or index PDFs for full-text search</p>
           </div>
         ) : (
-          <div className="space-y-2.5">
-            {filtered.map((item) => (
-              <LibraryItemCard key={item.id} item={item} onTap={handleTap} isProtocols={isProtocols} />
-            ))}
+          /* Dual-category search results */
+          <div className="space-y-5">
+            {fileNameMatches.length > 0 && (
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60 mb-2 ml-0.5">
+                  By File Name ({fileNameMatches.length})
+                </p>
+                <div className="space-y-2.5">
+                  {fileNameMatches.map((item) => (
+                    <LibraryItemCard key={item.id} item={item} onTap={handleTap} isProtocols={isProtocols} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {keywordMatches.length > 0 && (
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60 mb-2 ml-0.5">
+                  By Keyword — Inside Document ({keywordMatches.length})
+                </p>
+                <div className="space-y-2.5">
+                  {keywordMatches.map((item) => (
+                    <KeywordResultCard
+                      key={item.id}
+                      item={item}
+                      query={debouncedSearch}
+                      onTap={handleTap}
+                      isProtocols={isProtocols}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -392,21 +514,17 @@ export default function LibraryBucketPage() {
       {/* Quick Upload Dialog */}
       <Dialog open={showUpload} onOpenChange={(o) => !o && handleCloseUpload()}>
         <DialogContent className="max-w-sm mx-auto max-h-[90dvh] overflow-y-auto rounded-xl p-5">
-          <DialogTitle className="text-base font-semibold font-display">
-            Upload to {label}
-          </DialogTitle>
+          <DialogTitle className="text-base font-semibold font-display">Upload to {label}</DialogTitle>
           <DialogDescription className="sr-only">
             Upload files to the {label} bucket. Filenames are used as document titles.
           </DialogDescription>
 
           <div className="space-y-3 mt-2">
-            {/* Bucket indicator — read-only */}
             <div className="flex items-center gap-2 px-3 py-2 bg-secondary rounded-lg">
               <span className="text-xs text-muted-foreground font-medium">Bucket:</span>
               <span className="text-xs font-semibold text-primary">{bucket}</span>
             </div>
 
-            {/* Patient type — Protocols only */}
             {isProtocols && (
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-1 block">Patient Type</label>
@@ -419,10 +537,8 @@ export default function LibraryBucketPage() {
                       onClick={() => setQuickForm((f) => ({ ...f, patientType: pt }))}
                       className={`flex-1 py-2 text-xs font-semibold rounded-lg border transition-colors ${
                         quickForm.patientType === pt
-                          ? pt === "adult"
-                            ? "bg-blue-600 text-white border-blue-600"
-                            : pt === "paed"
-                            ? "bg-orange-500 text-white border-orange-500"
+                          ? pt === "adult" ? "bg-blue-600 text-white border-blue-600"
+                            : pt === "paed" ? "bg-orange-500 text-white border-orange-500"
                             : "bg-primary text-primary-foreground border-primary"
                           : "bg-secondary text-muted-foreground border-border hover:border-primary/40"
                       }`}
@@ -434,7 +550,6 @@ export default function LibraryBucketPage() {
               </div>
             )}
 
-            {/* File selector */}
             <div>
               <label className="text-xs font-medium text-muted-foreground mb-1 block">
                 Select Files <span className="text-muted-foreground/50">(filenames used as titles)</span>
@@ -455,7 +570,6 @@ export default function LibraryBucketPage() {
               )}
             </div>
 
-            {/* Optional metadata */}
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="text-xs font-medium text-muted-foreground mb-1 block">Version</label>
@@ -516,12 +630,7 @@ export default function LibraryBucketPage() {
             )}
 
             <div className="flex gap-2 pt-1">
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={handleCloseUpload}
-                disabled={isUploading}
-              >
+              <Button variant="outline" className="flex-1" onClick={handleCloseUpload} disabled={isUploading}>
                 Cancel
               </Button>
               <Button

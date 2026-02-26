@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import {
   ArrowLeft, Plus, Pencil, Trash2, Upload, Link2,
-  X, CheckCircle, AlertCircle, Loader2, BookOpen
+  X, CheckCircle, AlertCircle, Loader2, BookOpen, Database
 } from "lucide-react";
 import { MobileLayout } from "@/components/layout/MobileLayout";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";

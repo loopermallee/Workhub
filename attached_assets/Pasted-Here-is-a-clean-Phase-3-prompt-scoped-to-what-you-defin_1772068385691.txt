@@ -1,0 +1,131 @@
+Here is a clean Phase 3 prompt, scoped to what you defined:
+	•	Dual-category search results (by filename vs by keyword)
+	•	Keyword highlighting + snippet preview
+	•	Protocol search optimization (fast, indexed feel)
+
+Because you have <100 files and mixed formats, Phase 3 should treat “keyword inside document” as:
+	•	Full support for PDFs you host/upload (can extract text)
+	•	Metadata-only for non-PDF unless you later add conversion/indexing
+
+No AI summaries. No sound/haptics. No news redesign. No tag refactor.
+
+⸻
+
+Replit Agent Prompt – Phase 3
+
+Update the existing Station 44 Hub React webapp.
+
+Phase 3 scope:
+	•	Upgrade Library search to show dual-category results:
+A) By File Name (title matches)
+B) By Keyword (inside document content)
+	•	Add snippet previews for keyword matches
+	•	Add keyword highlight/jump in the in-app PDF viewer when opening a PDF from search
+
+Do not modify:
+	•	Admin mode gesture/PIN behavior
+	•	Protocol Adult/Paed label system
+	•	Training card structure
+	•	Notification/unread logic behavior
+	•	News system features
+	•	Sound/haptics
+	•	AI features
+
+⸻
+
+Implement dual-category search results in the Protocols/SOP Library.
+
+When the user types into the Library search bar (on bucket pages and/or global library search), display results in two clearly separated sections:
+	1.	By File Name
+
+	•	Includes items where the search query matches:
+	•	title
+	•	tags
+	•	version
+	•	summary
+	•	This is the existing metadata search behavior, but the results must be grouped under this header.
+
+	2.	By Keyword (Inside Document)
+
+	•	Includes items where the search query matches extracted document content text.
+	•	Only enable this for PDFs that can be indexed (uploaded PDFs or PDFs that can be fetched and processed).
+	•	Display:
+	•	Title
+	•	Version
+	•	Last updated
+	•	A short snippet showing the matched keyword context (around 120–180 characters)
+	•	Highlight the matched keyword in the snippet
+
+If there are no results in a section, hide that section entirely.
+
+Make the sections visually distinct but minimal and uncluttered.
+
+⸻
+
+Add PDF content indexing for keyword search.
+
+Create a text index for PDFs as follows:
+	•	For each library item, support an optional field:
+	•	searchText (string)
+	•	Store this in the existing library item record in the database.
+	•	Provide an admin-only action in Library Admin:
+	•	“Index PDF” for a single item
+	•	“Index All PDFs” (optional if easy)
+	•	Indexing behavior:
+	•	Download or access the PDF file
+	•	Extract text content
+	•	Save extracted text into searchText
+	•	If a PDF cannot be extracted, fail gracefully and show an error message in admin UI.
+
+Indexing should not run automatically on every search; it should be a one-time indexing action.
+
+When an admin uploads a PDF, you may optionally prompt:
+	•	“Index now” button after upload
+But do not auto-index without user action.
+
+⸻
+
+Update open behavior from search.
+
+When a user clicks a result under “By Keyword (Inside Document)”:
+	•	If the item is a PDF opened in the in-app viewer:
+	•	Pass the query into the viewer route as a query param, e.g. ?q=
+	•	The viewer should:
+	•	Run find/highlight
+	•	Jump to first match (best effort)
+	•	If item is not a PDF:
+	•	Open externally as usual
+	•	No highlight requirement
+
+When a user clicks a result under “By File Name”:
+	•	Maintain existing open behavior (PDF opens in-app, others external)
+	•	If it is a PDF, still pass ?q=term so highlight works consistently.
+
+⸻
+
+Search UX requirements:
+	•	Results update live as user types.
+	•	Debounce input slightly (e.g., 150–250ms) for performance.
+	•	Support case-insensitive matching.
+	•	For keyword search, match should be case-insensitive.
+	•	Do not display huge blocks of text; snippet only.
+
+Performance requirements:
+	•	Library search must remain fast (<100 items).
+	•	Keyword search must not freeze UI.
+	•	Index extraction is only done in admin flow, not on user search.
+
+⸻
+
+Acceptance criteria:
+	•	Searching shows two result sections when applicable.
+	•	Title matches appear under “By File Name”.
+	•	Content matches appear under “By Keyword (Inside Document)” with snippet + highlight.
+	•	Clicking results opens correct document.
+	•	PDFs opened from search highlight the query and jump to first match (best effort).
+	•	Indexing is admin-controlled and persists in DB.
+	•	No regressions to unread/badges or protocol Adult/Paed labeling.
+
+Implement only Phase 3 scope.
+Keep changes modular.
+Avoid refactoring unrelated systems.
