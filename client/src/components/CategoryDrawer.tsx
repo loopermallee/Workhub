@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Drawer } from "vaul";
-import { X, FolderOpen, Plus, Link as LinkIcon, FileText, Loader2, Trash2 } from "lucide-react";
+import { X, FolderOpen, Plus, Link as LinkIcon, FileText, Loader2, Trash2, ChevronUp, ChevronDown } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ItemCard } from "./ItemCard";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -34,6 +34,13 @@ export function CategoryDrawer({ category, items, isOpen, onClose, onItemClick, 
   const [addError, setAddError] = useState("");
   const [addLoading, setAddLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const [localItems, setLocalItems] = useState<Item[]>(items);
+  const [movingId, setMovingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLocalItems(items);
+  }, [items]);
 
   if (!category) return null;
 
@@ -110,6 +117,33 @@ export function CategoryDrawer({ category, items, isOpen, onClose, onItemClick, 
     }
   };
 
+  const handleMove = async (index: number, dir: "up" | "down") => {
+    const newItems = [...localItems];
+    const swapIdx = dir === "up" ? index - 1 : index + 1;
+    if (swapIdx < 0 || swapIdx >= newItems.length) return;
+    [newItems[index], newItems[swapIdx]] = [newItems[swapIdx], newItems[index]];
+    const prev = localItems;
+    setLocalItems(newItems);
+    setMovingId(newItems[swapIdx].id);
+    setTimeout(() => setMovingId(null), 400);
+    try {
+      const res = await fetch("/api/data/items/reorder", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pin: getAdminPin(),
+          categoryId: category.id,
+          itemIds: newItems.map((i) => i.id),
+        }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      queryClient.invalidateQueries({ queryKey: ["/api/data"] });
+    } catch {
+      setLocalItems(prev);
+      toast({ description: "Failed to save order", variant: "destructive" });
+    }
+  };
+
   return (
     <>
       <Drawer.Root open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -128,7 +162,7 @@ export function CategoryDrawer({ category, items, isOpen, onClose, onItemClick, 
                       {category.title}
                     </h2>
                     <p className="text-xs text-muted-foreground font-medium">
-                      {items.length} Resource{items.length !== 1 ? 's' : ''}
+                      {localItems.length} Resource{localItems.length !== 1 ? 's' : ''}
                     </p>
                   </div>
                 </div>
@@ -151,11 +185,35 @@ export function CategoryDrawer({ category, items, isOpen, onClose, onItemClick, 
             </div>
 
             <div className="p-4 flex-1 overflow-y-auto no-scrollbar">
-              {items.length > 0 ? (
+              {localItems.length > 0 ? (
                 <div className="bg-background rounded-xl border border-border/50 shadow-sm overflow-hidden">
-                  {items.map((item) => (
+                  {localItems.map((item, index) => (
                     <div key={item.id} className="relative group">
-                      <ItemCard item={item} onClick={onItemClick} />
+                      {adminMode && (
+                        <div className="absolute left-1 top-1/2 -translate-y-1/2 z-10 flex flex-col gap-0.5">
+                          <button
+                            data-testid={`button-move-up-${item.id}`}
+                            onClick={() => handleMove(index, "up")}
+                            disabled={index === 0 || movingId === item.id}
+                            className="w-6 h-6 flex items-center justify-center rounded bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30 transition-all"
+                            title="Move up"
+                          >
+                            <ChevronUp className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            data-testid={`button-move-down-${item.id}`}
+                            onClick={() => handleMove(index, "down")}
+                            disabled={index === localItems.length - 1 || movingId === item.id}
+                            className="w-6 h-6 flex items-center justify-center rounded bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30 transition-all"
+                            title="Move down"
+                          >
+                            <ChevronDown className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
+                      <div className={adminMode ? "pl-8" : ""}>
+                        <ItemCard item={item} onClick={onItemClick} />
+                      </div>
                       {adminMode && (
                         <button
                           data-testid={`button-delete-item-${item.id}`}

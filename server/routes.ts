@@ -85,6 +85,41 @@ export async function registerRoutes(
     }
   });
 
+  app.put("/api/data/items/reorder", async (req, res) => {
+    try {
+      const adminPin = getAdminPin();
+      const { pin, categoryId, itemIds } = req.body;
+      if (!adminPin) return res.status(500).json({ message: "Admin PIN not configured" });
+      if (pin !== adminPin) return res.status(401).json({ message: "Invalid PIN" });
+      if (!categoryId || !Array.isArray(itemIds)) {
+        return res.status(400).json({ message: "categoryId and itemIds are required" });
+      }
+      await storage.reorderAppDataItems(categoryId, itemIds);
+      res.json({ ok: true });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to reorder items" });
+    }
+  });
+
+  app.put("/api/library/reorder", async (req, res) => {
+    try {
+      const adminPin = getAdminPin();
+      const pin = req.headers["x-admin-pin"] as string;
+      const { bucket, itemIds } = req.body;
+      if (!adminPin) return res.status(500).json({ message: "Admin PIN not configured" });
+      if (pin !== adminPin) return res.status(401).json({ message: "Invalid PIN" });
+      if (!bucket || !Array.isArray(itemIds)) {
+        return res.status(400).json({ message: "bucket and itemIds are required" });
+      }
+      await storage.reorderLibraryItems(bucket, itemIds);
+      res.json({ ok: true });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ message: "Failed to reorder library items" });
+    }
+  });
+
   app.get("/api/news", async (req, res) => {
     try {
       const items = await storage.getNewsItems();

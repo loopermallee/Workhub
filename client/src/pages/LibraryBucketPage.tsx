@@ -4,7 +4,7 @@ import { useLocation, useParams } from "wouter";
 import {
   ArrowLeft, Search, FileText, FileSpreadsheet, Presentation,
   ExternalLink, Globe, X, BookOpen, Plus, Upload,
-  CheckCircle, AlertCircle, Loader2
+  CheckCircle, AlertCircle, Loader2, ChevronUp, ChevronDown
 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import type { LibraryItem } from "@shared/schema";
 import { markLibraryRead, isLibraryRead } from "@/lib/readTracking";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isAdminMode, getAdminPin } from "@/lib/adminMode";
+import { useToast } from "@/hooks/use-toast";
 
 const BUCKET_LABELS: Record<string, string> = {
   SOP: "SOPs",
@@ -246,6 +247,8 @@ export default function LibraryBucketPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [, forceUpdate] = useState(0);
   const adminMode = isAdminMode();
+  const [localBucketItems, setLocalBucketItems] = useState<LibraryItem[]>([]);
+  const [movingLibId, setMovingLibId] = useState<string | null>(null);
 
   const [showUpload, setShowUpload] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -275,6 +278,12 @@ export default function LibraryBucketPage() {
 
   const isProtocols = bucket === "Protocols";
   const bucketItems = allItems.filter((i) => i.bucket === bucket);
+
+  useEffect(() => {
+    setLocalBucketItems(bucketItems);
+  }, [allItems, bucket]);
+
+  const { toast } = useToast();
 
   const { fileNameMatches, keywordMatches } = useMemo(() => {
     if (!debouncedSearch) return { fileNameMatches: bucketItems, keywordMatches: [] as LibraryItem[] };
@@ -395,6 +404,29 @@ export default function LibraryBucketPage() {
     }
   };
 
+  const handleMoveLibrary = async (index: number, dir: "up" | "down") => {
+    const newItems = [...localBucketItems];
+    const swapIdx = dir === "up" ? index - 1 : index + 1;
+    if (swapIdx < 0 || swapIdx >= newItems.length) return;
+    [newItems[index], newItems[swapIdx]] = [newItems[swapIdx], newItems[index]];
+    const prev = localBucketItems;
+    setLocalBucketItems(newItems);
+    setMovingLibId(newItems[swapIdx].id);
+    setTimeout(() => setMovingLibId(null), 400);
+    try {
+      const res = await fetch("/api/library/reorder", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "x-admin-pin": getAdminPin() },
+        body: JSON.stringify({ bucket, itemIds: newItems.map((i) => i.id) }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      queryClient.invalidateQueries({ queryKey: ["/api/library"] });
+    } catch {
+      setLocalBucketItems(prev);
+      toast({ description: "Failed to save order", variant: "destructive" });
+    }
+  };
+
   const handleCloseUpload = () => {
     if (isUploading) return;
     setShowUpload(false);
@@ -464,7 +496,7 @@ export default function LibraryBucketPage() {
           </div>
         ) : !isSearching ? (
           /* Normal list — no search active */
-          bucketItems.length === 0 ? (
+          localBucketItems.length === 0 ? (
             <div className="text-center py-12">
               <FileText className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
               <p className="text-sm text-muted-foreground">No documents in this bucket yet</p>
@@ -476,8 +508,34 @@ export default function LibraryBucketPage() {
             </div>
           ) : (
             <div className="space-y-2.5">
-              {bucketItems.map((item) => (
-                <LibraryItemCard key={item.id} item={item} onTap={handleTap} isProtocols={isProtocols} />
+              {localBucketItems.map((item, index) => (
+                <div key={item.id} className="relative">
+                  {adminMode && (
+                    <div className="absolute left-1 top-1/2 -translate-y-1/2 z-10 flex flex-col gap-0.5">
+                      <button
+                        data-testid={`button-lib-move-up-${item.id}`}
+                        onClick={() => handleMoveLibrary(index, "up")}
+                        disabled={index === 0 || movingLibId === item.id}
+                        className="w-6 h-6 flex items-center justify-center rounded bg-background/90 border border-border text-muted-foreground hover:text-foreground disabled:opacity-30 transition-all shadow-sm"
+                        title="Move up"
+                      >
+                        <ChevronUp className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        data-testid={`button-lib-move-down-${item.id}`}
+                        onClick={() => handleMoveLibrary(index, "down")}
+                        disabled={index === localBucketItems.length - 1 || movingLibId === item.id}
+                        className="w-6 h-6 flex items-center justify-center rounded bg-background/90 border border-border text-muted-foreground hover:text-foreground disabled:opacity-30 transition-all shadow-sm"
+                        title="Move down"
+                      >
+                        <ChevronDown className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
+                  <div className={adminMode ? "pl-8" : ""}>
+                    <LibraryItemCard item={item} onTap={handleTap} isProtocols={isProtocols} />
+                  </div>
+                </div>
               ))}
             </div>
           )

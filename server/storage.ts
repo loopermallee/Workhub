@@ -6,6 +6,7 @@ export interface IStorage {
   getAppData(): Promise<AppData>;
   addAppDataItem(item: Item): Promise<void>;
   deleteAppDataItem(id: string): Promise<Item | null>;
+  reorderAppDataItems(categoryId: string, itemIds: string[]): Promise<void>;
   getNewsItems(): Promise<NewsItem[]>;
   saveNewsItem(item: NewsItem): Promise<void>;
   saveAllNewsItems(items: NewsItem[]): Promise<void>;
@@ -14,6 +15,7 @@ export interface IStorage {
   saveLibraryItem(item: LibraryItem): Promise<void>;
   updateLibraryItem(id: string, updates: Partial<LibraryItem>): Promise<LibraryItem | null>;
   deleteLibraryItem(id: string): Promise<LibraryItem | null>;
+  reorderLibraryItems(bucket: string, itemIds: string[]): Promise<void>;
 }
 
 export class FileStorage implements IStorage {
@@ -38,6 +40,18 @@ export class FileStorage implements IStorage {
     appData.items = appData.items.filter((i) => i.id !== id);
     await fs.writeFile(filePath, JSON.stringify(appData, null, 2), "utf-8");
     return item;
+  }
+
+  async reorderAppDataItems(categoryId: string, itemIds: string[]): Promise<void> {
+    const filePath = path.resolve(process.cwd(), "shared/appData.json");
+    const appData = await this.getAppData();
+    const nonCategory = appData.items.filter((i) => i.categoryId !== categoryId);
+    const categoryItems = appData.items.filter((i) => i.categoryId === categoryId);
+    const idToItem = new Map(categoryItems.map((i) => [i.id, i]));
+    const reordered = itemIds.map((id) => idToItem.get(id)).filter(Boolean) as Item[];
+    const remaining = categoryItems.filter((i) => !itemIds.includes(i.id));
+    appData.items = [...nonCategory, ...reordered, ...remaining];
+    await fs.writeFile(filePath, JSON.stringify(appData, null, 2), "utf-8");
   }
 
   async getNewsItems(): Promise<NewsItem[]> {
@@ -104,6 +118,18 @@ export class FileStorage implements IStorage {
     const filtered = items.filter((i) => i.id !== id);
     await fs.writeFile(filePath, JSON.stringify(filtered, null, 2), "utf-8");
     return item;
+  }
+
+  async reorderLibraryItems(bucket: string, itemIds: string[]): Promise<void> {
+    const filePath = path.resolve(process.cwd(), "shared/libraryData.json");
+    const items = await this.getLibraryItems();
+    const nonBucket = items.filter((i) => i.bucket !== bucket);
+    const bucketItems = items.filter((i) => i.bucket === bucket);
+    const idToItem = new Map(bucketItems.map((i) => [i.id, i]));
+    const reordered = itemIds.map((id) => idToItem.get(id)).filter(Boolean) as LibraryItem[];
+    const remaining = bucketItems.filter((i) => !itemIds.includes(i.id));
+    const newItems = [...nonBucket, ...reordered, ...remaining];
+    await fs.writeFile(filePath, JSON.stringify(newItems, null, 2), "utf-8");
   }
 }
 

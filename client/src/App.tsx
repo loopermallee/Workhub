@@ -11,6 +11,9 @@ import LibraryPage from "./pages/LibraryPage";
 import LibraryBucketPage from "./pages/LibraryBucketPage";
 import ViewerPage from "./pages/ViewerPage";
 import AdminLibraryPage from "./pages/AdminLibraryPage";
+import TemplatesPage from "./pages/TemplatesPage";
+import OHCAPage from "./pages/OHCAPage";
+import DrugUsagePage from "./pages/DrugUsagePage";
 import NotFound from "./pages/not-found";
 
 function Router() {
@@ -23,6 +26,9 @@ function Router() {
       <Route path="/library/:bucket" component={LibraryBucketPage} />
       <Route path="/viewer/:id" component={ViewerPage} />
       <Route path="/admin/library" component={AdminLibraryPage} />
+      <Route path="/templates" component={TemplatesPage} />
+      <Route path="/templates/ohca" component={OHCAPage} />
+      <Route path="/templates/drug-usage" component={DrugUsagePage} />
       <Route component={NotFound} />
     </Switch>
   );

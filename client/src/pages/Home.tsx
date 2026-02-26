@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Loader2, AlertCircle, BookOpen, ExternalLink } from "lucide-react";
+import { Loader2, AlertCircle, BookOpen, ExternalLink, ClipboardList } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { MobileLayout } from "@/components/layout/MobileLayout";
@@ -292,6 +292,19 @@ export default function Home() {
                   />
                 ))}
               </div>
+              <button
+                data-testid="button-templates"
+                onClick={() => setLocation("/templates")}
+                className="w-full flex items-center gap-4 p-4 bg-card border border-border rounded-xl shadow-sm hover:shadow-md active:scale-[0.99] transition-all text-left"
+              >
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 bg-violet-50 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400">
+                  <ClipboardList className="w-5 h-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm text-primary font-display">Templates</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Quick formatting tools</p>
+                </div>
+              </button>
             </div>
           )}
         </div>
