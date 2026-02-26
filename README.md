@@ -1,6 +1,6 @@
 # Station 44 Hub
 
-A mobile-first web app for SCDF Station 44, providing quick access to resources (roster, ambulance duty, training, admin), daily news announcements, and a Protocols/SOP library.
+A mobile-first web app for users, providing quick access to resources (roster, ambulance duty, training, admin), daily news announcements, and a Protocols/SOP library.
 
 ---
 
