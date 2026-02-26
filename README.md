@@ -9,7 +9,7 @@ A mobile-first web app for SCDF Station 44, providing quick access to resources 
 ### Setting the Admin PIN
 
 1. Open the **Secrets** tab (padlock icon) in Replit.
-2. Add a secret with key `REPLIT_ADMIN_PIN` and your chosen PIN (e.g. `1234`).
+2. Add a secret with key `REPLIT_ADMIN_PIN` and your chosen PIN.
 3. Restart the app.
 
 > **Note:** The old secret `REPLIT_NEWS_ADMIN_PIN` still works as a fallback if `REPLIT_ADMIN_PIN` is not set.
