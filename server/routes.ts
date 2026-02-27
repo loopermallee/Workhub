@@ -1,5 +1,5 @@
 import type { Express } from "express";
-import { type Server } from "http";
+import { type Server } from "
 import path from "path";
 import fs from "fs/promises";
 import multer from "multer";
@@ -8,14 +8,34 @@ import { api } from "@shared/routes";
 import { insertNewsItemSchema, insertLibraryItemSchema } from "@shared/schema";
 
 function getAdminPin(): string {
-  return process.env.REPLIT_ADMIN_PIN ?? process.env.REPLIT_NEWS_ADMIN_PIN ?? "";
+  return (
+    process.env.REPLIT_ADMIN_PIN ?? process.env.REPLIT_NEWS_ADMIN_PIN ?? ""
+  );
 }
 
-function inferFileType(mimetype: string, originalname: string): "pdf" | "docx" | "xlsx" | "pptx" | "link" {
+function inferFileType(
+  mimetype: string,
+  originalname: string,
+): "pdf" | "docx" | "xlsx" | "pptx" | "link" {
   if (mimetype === "application/pdf") return "pdf";
-  if (mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" || originalname.endsWith(".docx")) return "docx";
-  if (mimetype === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" || originalname.endsWith(".xlsx")) return "xlsx";
-  if (mimetype === "application/vnd.openxmlformats-officedocument.presentationml.presentation" || originalname.endsWith(".pptx")) return "pptx";
+  if (
+    mimetype ===
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+    originalname.endsWith(".docx")
+  )
+    return "docx";
+  if (
+    mimetype ===
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+    originalname.endsWith(".xlsx")
+  )
+    return "xlsx";
+  if (
+    mimetype ===
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation" ||
+    originalname.endsWith(".pptx")
+  )
+    return "pptx";
   return "link";
 }
 
@@ -32,7 +52,7 @@ const upload = multer({
 
 export async function registerRoutes(
   httpServer: Server,
-  app: Express
+  app: Express,
 ): Promise<Server> {
   app.get(api.data.get.path, async (req, res) => {
     try {
@@ -48,10 +68,14 @@ export async function registerRoutes(
     try {
       const adminPin = getAdminPin();
       const { pin, categoryId, title, type, url, content, tags } = req.body;
-      if (!adminPin) return res.status(500).json({ message: "Admin PIN not configured" });
-      if (pin !== adminPin) return res.status(401).json({ message: "Invalid PIN" });
+      if (!adminPin)
+        return res.status(500).json({ message: "Admin PIN not configured" });
+      if (pin !== adminPin)
+        return res.status(401).json({ message: "Invalid PIN" });
       if (!categoryId || !title?.trim() || !type) {
-        return res.status(400).json({ message: "categoryId, title, and type are required" });
+        return res
+          .status(400)
+          .json({ message: "categoryId, title, and type are required" });
       }
       const newItem = {
         id: `item-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -59,7 +83,14 @@ export async function registerRoutes(
         title: title.trim(),
         type,
         ...(type === "link" ? { url: url ?? "" } : { content: content ?? "" }),
-        tags: Array.isArray(tags) ? tags : (tags ? String(tags).split(",").map((t: string) => t.trim()).filter(Boolean) : []),
+        tags: Array.isArray(tags)
+          ? tags
+          : tags
+            ? String(tags)
+                .split(",")
+                .map((t: string) => t.trim())
+                .filter(Boolean)
+            : [],
         lastUpdated: new Date().toISOString().slice(0, 10),
       };
       await storage.addAppDataItem(newItem);
@@ -74,8 +105,10 @@ export async function registerRoutes(
     try {
       const adminPin = getAdminPin();
       const pin = req.headers["x-admin-pin"] as string;
-      if (!adminPin) return res.status(500).json({ message: "Admin PIN not configured" });
-      if (pin !== adminPin) return res.status(401).json({ message: "Invalid PIN" });
+      if (!adminPin)
+        return res.status(500).json({ message: "Admin PIN not configured" });
+      if (pin !== adminPin)
+        return res.status(401).json({ message: "Invalid PIN" });
       const deleted = await storage.deleteAppDataItem(req.params.id);
       if (!deleted) return res.status(404).json({ message: "Item not found" });
       res.json(deleted);
@@ -89,10 +122,14 @@ export async function registerRoutes(
     try {
       const adminPin = getAdminPin();
       const { pin, categoryId, itemIds } = req.body;
-      if (!adminPin) return res.status(500).json({ message: "Admin PIN not configured" });
-      if (pin !== adminPin) return res.status(401).json({ message: "Invalid PIN" });
+      if (!adminPin)
+        return res.status(500).json({ message: "Admin PIN not configured" });
+      if (pin !== adminPin)
+        return res.status(401).json({ message: "Invalid PIN" });
       if (!categoryId || !Array.isArray(itemIds)) {
-        return res.status(400).json({ message: "categoryId and itemIds are required" });
+        return res
+          .status(400)
+          .json({ message: "categoryId and itemIds are required" });
       }
       await storage.reorderAppDataItems(categoryId, itemIds);
       res.json({ ok: true });
@@ -107,10 +144,14 @@ export async function registerRoutes(
       const adminPin = getAdminPin();
       const pin = req.headers["x-admin-pin"] as string;
       const { bucket, itemIds } = req.body;
-      if (!adminPin) return res.status(500).json({ message: "Admin PIN not configured" });
-      if (pin !== adminPin) return res.status(401).json({ message: "Invalid PIN" });
+      if (!adminPin)
+        return res.status(500).json({ message: "Admin PIN not configured" });
+      if (pin !== adminPin)
+        return res.status(401).json({ message: "Invalid PIN" });
       if (!bucket || !Array.isArray(itemIds)) {
-        return res.status(400).json({ message: "bucket and itemIds are required" });
+        return res
+          .status(400)
+          .json({ message: "bucket and itemIds are required" });
       }
       await storage.reorderLibraryItems(bucket, itemIds);
       res.json({ ok: true });
@@ -125,10 +166,14 @@ export async function registerRoutes(
       const items = await storage.getNewsItems();
       const now = new Date();
       const active = items.filter(
-        (item) => item.pinned === true || !item.expiresAt || new Date(item.expiresAt) > now
+        (item) =>
+          item.pinned === true ||
+          !item.expiresAt ||
+          new Date(item.expiresAt) > now,
       );
       const expired = items.filter(
-        (item) => !item.pinned && item.expiresAt && new Date(item.expiresAt) <= now
+        (item) =>
+          !item.pinned && item.expiresAt && new Date(item.expiresAt) <= now,
       );
       res.json({ active, expired });
     } catch (err) {
@@ -140,8 +185,10 @@ export async function registerRoutes(
   app.post("/api/news/verify-pin", async (req, res) => {
     const adminPin = getAdminPin();
     const { pin } = req.body;
-    if (!adminPin) return res.status(500).json({ message: "Admin PIN not configured" });
-    if (pin !== adminPin) return res.status(401).json({ message: "Invalid PIN" });
+    if (!adminPin)
+      return res.status(500).json({ message: "Admin PIN not configured" });
+    if (pin !== adminPin)
+      return res.status(401).json({ message: "Invalid PIN" });
     return res.json({ ok: true });
   });
 
@@ -159,7 +206,12 @@ export async function registerRoutes(
 
       const parsed = insertNewsItemSchema.safeParse(body);
       if (!parsed.success) {
-        return res.status(400).json({ message: "Validation failed", errors: parsed.error.flatten() });
+        return res
+          .status(400)
+          .json({
+            message: "Validation failed",
+            errors: parsed.error.flatten(),
+          });
       }
 
       const { title, expiresAt, pinned } = parsed.data;
@@ -169,11 +221,15 @@ export async function registerRoutes(
 
       if (!pinned) {
         if (!expiresAt) {
-          return res.status(400).json({ message: "Expiry date is required for non-pinned items" });
+          return res
+            .status(400)
+            .json({ message: "Expiry date is required for non-pinned items" });
         }
         const expiresDate = new Date(expiresAt);
         if (isNaN(expiresDate.getTime()) || expiresDate <= new Date()) {
-          return res.status(400).json({ message: "Expiry must be a valid future datetime" });
+          return res
+            .status(400)
+            .json({ message: "Expiry must be a valid future datetime" });
         }
       }
 
@@ -198,25 +254,35 @@ export async function registerRoutes(
       const adminPin = getAdminPin();
       const { pin, title, body, expiresAt, pinned } = req.body;
 
-      if (!adminPin) return res.status(500).json({ message: "Admin PIN not configured" });
-      if (pin !== adminPin) return res.status(401).json({ message: "Invalid PIN" });
-      if (!title || !title.trim()) return res.status(400).json({ message: "Title is required" });
+      if (!adminPin)
+        return res.status(500).json({ message: "Admin PIN not configured" });
+      if (pin !== adminPin)
+        return res.status(401).json({ message: "Invalid PIN" });
+      if (!title || !title.trim())
+        return res.status(400).json({ message: "Title is required" });
 
       if (!pinned) {
-        if (!expiresAt) return res.status(400).json({ message: "Expiry date is required for non-pinned items" });
+        if (!expiresAt)
+          return res
+            .status(400)
+            .json({ message: "Expiry date is required for non-pinned items" });
         const expiresDate = new Date(expiresAt);
-        if (isNaN(expiresDate.getTime())) return res.status(400).json({ message: "Invalid expiry date" });
+        if (isNaN(expiresDate.getTime()))
+          return res.status(400).json({ message: "Invalid expiry date" });
       }
 
       const items = await storage.getNewsItems();
       const idx = items.findIndex((i) => i.id === req.params.id);
-      if (idx === -1) return res.status(404).json({ message: "News item not found" });
+      if (idx === -1)
+        return res.status(404).json({ message: "News item not found" });
 
       const updated = {
         ...items[idx],
         title: title.trim(),
         body: body ?? "",
-        ...(pinned ? { pinned: true, expiresAt: undefined } : { pinned: false, expiresAt }),
+        ...(pinned
+          ? { pinned: true, expiresAt: undefined }
+          : { pinned: false, expiresAt }),
       };
       items[idx] = updated;
       await storage.saveAllNewsItems(items);
@@ -251,7 +317,8 @@ export async function registerRoutes(
     try {
       const items = await storage.getLibraryItems();
       const sorted = [...items].sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
       );
       res.json(sorted);
     } catch (err) {
@@ -265,12 +332,19 @@ export async function registerRoutes(
       const adminPin = getAdminPin();
       const { pin, ...body } = req.body;
 
-      if (!adminPin) return res.status(500).json({ message: "Admin PIN not configured" });
-      if (pin !== adminPin) return res.status(401).json({ message: "Invalid PIN" });
+      if (!adminPin)
+        return res.status(500).json({ message: "Admin PIN not configured" });
+      if (pin !== adminPin)
+        return res.status(401).json({ message: "Invalid PIN" });
 
       const parsed = insertLibraryItemSchema.safeParse(body);
       if (!parsed.success) {
-        return res.status(400).json({ message: "Validation failed", errors: parsed.error.flatten() });
+        return res
+          .status(400)
+          .json({
+            message: "Validation failed",
+            errors: parsed.error.flatten(),
+          });
       }
 
       const now = new Date().toISOString();
@@ -295,11 +369,14 @@ export async function registerRoutes(
       const adminPin = getAdminPin();
       const { pin, ...updates } = req.body;
 
-      if (!adminPin) return res.status(500).json({ message: "Admin PIN not configured" });
-      if (pin !== adminPin) return res.status(401).json({ message: "Invalid PIN" });
+      if (!adminPin)
+        return res.status(500).json({ message: "Admin PIN not configured" });
+      if (pin !== adminPin)
+        return res.status(401).json({ message: "Invalid PIN" });
 
       const updated = await storage.updateLibraryItem(req.params.id, updates);
-      if (!updated) return res.status(404).json({ message: "Library item not found" });
+      if (!updated)
+        return res.status(404).json({ message: "Library item not found" });
       res.json(updated);
     } catch (err) {
       console.error(err);
@@ -312,14 +389,20 @@ export async function registerRoutes(
       const adminPin = getAdminPin();
       const pin = req.headers["x-admin-pin"] as string;
 
-      if (!adminPin) return res.status(500).json({ message: "Admin PIN not configured" });
-      if (pin !== adminPin) return res.status(401).json({ message: "Invalid PIN" });
+      if (!adminPin)
+        return res.status(500).json({ message: "Admin PIN not configured" });
+      if (pin !== adminPin)
+        return res.status(401).json({ message: "Invalid PIN" });
 
       const deleted = await storage.deleteLibraryItem(req.params.id);
-      if (!deleted) return res.status(404).json({ message: "Library item not found" });
+      if (!deleted)
+        return res.status(404).json({ message: "Library item not found" });
 
       if (deleted.source === "upload" && deleted.url) {
-        const filePath = path.resolve(process.cwd(), deleted.url.replace(/^\//, ""));
+        const filePath = path.resolve(
+          process.cwd(),
+          deleted.url.replace(/^\//, ""),
+        );
         try {
           await fs.unlink(filePath);
         } catch {
@@ -338,14 +421,26 @@ export async function registerRoutes(
     try {
       const adminPin = getAdminPin();
       const pin = req.headers["x-admin-pin"] as string;
-      if (!adminPin) return res.status(500).json({ message: "Admin PIN not configured" });
-      if (pin !== adminPin) return res.status(401).json({ message: "Invalid PIN" });
+      if (!adminPin)
+        return res.status(500).json({ message: "Admin PIN not configured" });
+      if (pin !== adminPin)
+        return res.status(401).json({ message: "Invalid PIN" });
 
       const items = await storage.getLibraryItems();
       const item = items.find((i) => i.id === req.params.id);
-      if (!item) return res.status(404).json({ message: "Library item not found" });
-      if (item.fileType !== "pdf") return res.status(400).json({ message: "Only PDF items can be indexed" });
-      if (item.source !== "upload") return res.status(400).json({ message: "Only uploaded PDFs can be indexed (URL-based PDFs not supported)" });
+      if (!item)
+        return res.status(404).json({ message: "Library item not found" });
+      if (item.fileType !== "pdf")
+        return res
+          .status(400)
+          .json({ message: "Only PDF items can be indexed" });
+      if (item.source !== "upload")
+        return res
+          .status(400)
+          .json({
+            message:
+              "Only uploaded PDFs can be indexed (URL-based PDFs not supported)",
+          });
 
       const filePath = path.resolve(process.cwd(), item.url.replace(/^\//, ""));
       const buffer = await fs.readFile(filePath);
@@ -358,7 +453,9 @@ export async function registerRoutes(
       res.json({ ok: true, chars: searchText.length });
     } catch (err: any) {
       console.error("PDF index error:", err);
-      res.status(500).json({ message: err?.message ?? "Failed to extract PDF text" });
+      res
+        .status(500)
+        .json({ message: err?.message ?? "Failed to extract PDF text" });
     }
   });
 
@@ -367,8 +464,10 @@ export async function registerRoutes(
       const adminPin = getAdminPin();
       const pin = req.headers["x-admin-pin"] as string;
 
-      if (!adminPin) return res.status(500).json({ message: "Admin PIN not configured" });
-      if (pin !== adminPin) return res.status(401).json({ message: "Invalid PIN" });
+      if (!adminPin)
+        return res.status(500).json({ message: "Admin PIN not configured" });
+      if (pin !== adminPin)
+        return res.status(401).json({ message: "Invalid PIN" });
 
       const files = req.files as Express.Multer.File[];
       if (!files || files.length === 0) {

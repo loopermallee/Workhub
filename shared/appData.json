@@ -79,20 +79,6 @@
       "lastUpdated": "2026-02-20"
     },
     {
-      "id": "ad2",
-      "categoryId": "admin",
-      "title": "Cardiac Arrest Report Template",
-      "type": "content",
-      "content": "Cardiac Arrest Report\nInc no: 2025xxxx/xxxx\nCallsign:\nPRM Name:\nTime of Call: xxxxHRS\nOHCA Type:\nE-Sub Status & Date: Not yet\n(To be completed in 3 days)",
-      "tags": [
-        "cardiac",
-        "arrest",
-        "report",
-        "template"
-      ],
-      "lastUpdated": "2026-02-20"
-    },
-    {
       "id": "ad3",
       "categoryId": "admin",
       "title": "Offrun Template",
@@ -117,9 +103,9 @@
     {
       "id": "r3",
       "categoryId": "roster",
-      "title": "Manning link",
+      "title": "Manning",
       "type": "link",
-      "url": "https://docs.google.com/spreadsheets/d/1-i10XR12IGN2X_I7ID62gkkwHSQeFn-JZpdf1JKLDymE/edit",
+      "url": "https://docs.google.com/spreadsheets/d/1-iI0XR12IGN2X_I7lD62gkkwHSQeFnJZpdf1JKLDymE/edit",
       "tags": [
         "manning"
       ],
@@ -128,9 +114,9 @@
     {
       "id": "r1",
       "categoryId": "roster",
-      "title": "Roster link",
+      "title": "Roster",
       "type": "link",
-      "url": "https://docs.google.com/spreadsheets/d/1kj-PHM0wrW_xLIPdHieo3ys9TSO2AO_TZUeaH6R-W1nw/edit?usp=drivesdk",
+      "url": "https://docs.google.com/spreadsheets/d/1kj-PHM0wrW_xLIPdHieo3ys9TSO2AO_TZUeaH6RW1nw/edit",
       "tags": [
         "roster",
         "schedule"
@@ -140,9 +126,9 @@
     {
       "id": "r2",
       "categoryId": "roster",
-      "title": "Leave Forecast link",
+      "title": "Leave Forecast",
       "type": "link",
-      "url": "https://docs.google.com/spreadsheets/d/120vXZyAdaoCgJc_2zSzZ0XchCrrLtnvLfXu-MHDWqK20/edit?usp=drivesdk",
+      "url": "https://docs.google.com/spreadsheets/d/120vXZyAdaoCgJc_2zSzZ0XchCrrLtnvLfXuMHDWqK20/edit?usp=drivesdk",
       "tags": [
         "leave",
         "forecast"
@@ -158,20 +144,6 @@
       "tags": [
         "armoury",
         "equipment"
-      ],
-      "lastUpdated": "2026-02-20"
-    },
-    {
-      "id": "a3",
-      "categoryId": "ambulance",
-      "title": "Hazmat / BRV / BRH checklist",
-      "type": "link",
-      "url": "https://go.gov.sg/hazmat44",
-      "tags": [
-        "hazmat",
-        "brv",
-        "brh",
-        "checklist"
       ],
       "lastUpdated": "2026-02-20"
     },
@@ -196,6 +168,20 @@
       "tags": [
         "offrun",
         "ambulance"
+      ],
+      "lastUpdated": "2026-02-20"
+    },
+    {
+      "id": "a3",
+      "categoryId": "ambulance",
+      "title": "Hazmat / BRV / BRH checklist",
+      "type": "link",
+      "url": "https://go.gov.sg/hazmat44",
+      "tags": [
+        "hazmat",
+        "brv",
+        "brh",
+        "checklist"
       ],
       "lastUpdated": "2026-02-20"
     },
